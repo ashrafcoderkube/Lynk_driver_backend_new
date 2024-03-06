@@ -11,7 +11,7 @@ const path = require('path');
 const userRoutes = require('./routes/user.routes');
 const adminRoutes = require('./routes/admin.route');
 const agreementRoutes = require('./routes/agreement.route');
-const documentRoutes = require('./Routes/document.route');
+const documentRoutes = require('./routes/document.route');
 const authRoutes = require('./routes/auth.route');
 require('dotenv').config();
 app.use(express.json());
