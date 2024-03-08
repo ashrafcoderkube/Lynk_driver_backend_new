@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const con = require('../config/db.config');
 
-const user = con.define('user', {
+const user = con.define('users', {
     user_id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -93,7 +93,7 @@ const user = con.define('user', {
         defaultValue: 0
     }
 }, {
-    tableName: 'user',
+    tableName: 'users',
     timestamps: true
 });
 

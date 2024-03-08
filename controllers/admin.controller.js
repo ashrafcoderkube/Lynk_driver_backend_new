@@ -29,6 +29,7 @@ const {
 } = require("../Utils/Validations");
 const { use } = require('../routes/admin.route');
 const { CONSTANTS } = require('@firebase/util');
+const e = require('express');
 
 module.exports = {
   getAllUsers: async (req, res) => {
@@ -54,35 +55,93 @@ module.exports = {
           const offset = (page - 1) * pageSize;
           const totalNumberOfUser = await userModel.count();
           const totalPages = Math.ceil(totalNumberOfUser / pageSize);
-          let userData = await userModel.findAndCountAll({
-            where: {
-              [Sequelize.Op.or]: [
-                {
-                  first_name: {
-                    [Sequelize.Op.like]: `%${firstName}%`
-                  }
-                },
-                {
-                  last_name: {
-                    [Sequelize.Op.like]: `%${lastName}%`
-                  }
-                },
-                {
-                  email: {
-                    [Sequelize.Op.like]: `%${email}%`
-                  }
-                },
-                {
-                  mobile_no: {
-                    [Sequelize.Op.like]: `%${mobile}%`
-                  }
-                }
-              ],
+          // let userData = await userModel.findAndCountAll({
+          //   where: {
+          //     [Sequelize.Op.or]: [
+          //       {
+          //         first_name: {
+          //           [Sequelize.Op.like]: `%${firstName}%`
+          //         }
+          //       },
+          //       {
+          //         last_name: {
+          //           [Sequelize.Op.like]: `%${lastName}%`
+          //         }
+          //       },
+          //       {
+          //         email: {
+          //           [Sequelize.Op.like]: `%${email}%`
+          //         }
+          //       },
+          //       {
+          //         mobile_no: {
+          //           [Sequelize.Op.like]: `%${mobile}%`
+          //         }
+          //       }
+          //     ],
+          //     device_type: device_type,
+          //     type: type,
+          //     is_deleted: 0,
+          //     icabbiStatus: icabbiStatus
+          //   },
+          //   order: [[sortField, sortOrder]],
+          //   limit: pageSize,
+          //   offset: offset,
+          //   include: [{
+          //     as: 'attachment',
+          //     model: documentModel
+          //   }]
+          // });
+          let whereCondition = {};
+          if(typeof icabbiStatus == "undefined"){
+            whereCondition = {
+              device_type: device_type,
+              type: type,
+              is_deleted: 0
+            };
+          } else {
+            whereCondition = {
               device_type: device_type,
               type: type,
               is_deleted: 0,
               icabbiStatus: icabbiStatus
-            },
+            };
+          }
+
+          if (firstName || lastName || email || mobile) {
+            whereCondition[Sequelize.Op.or] = [];
+            if (firstName) {
+              whereCondition[Sequelize.Op.or].push({
+                first_name: {
+                  [Sequelize.Op.like]: `%${firstName}%`
+                }
+              });
+            }
+            if (lastName) {
+              whereCondition[Sequelize.Op.or].push({
+                last_name: {
+                  [Sequelize.Op.like]: `%${lastName}%`
+                }
+              });
+            }
+            if (email) {
+              whereCondition[Sequelize.Op.or].push({
+                email: {
+                  [Sequelize.Op.like]: `%${email}%`
+                }
+              });
+            }
+            if (mobile) {
+              whereCondition[Sequelize.Op.or].push({
+                mobile_no: {
+                  [Sequelize.Op.like]: `%${mobile}%`
+                }
+              });
+            }
+          }
+
+          let userData = await userModel.findAndCountAll({
+            where: whereCondition,
             order: [[sortField, sortOrder]],
             limit: pageSize,
             offset: offset,
@@ -91,6 +150,7 @@ module.exports = {
               model: documentModel
             }]
           });
+
           userData = JSON.parse(JSON.stringify(userData));
           let registrationComplete = "";
           userData.rows.forEach(user => {

@@ -45,3 +45,17 @@ app.listen(PORT, (err) => {
     if (err) console.log("Error in server setup")
     console.log(`Server listening at ${PORT}.`);
 });
+
+// const options = {
+//     key: fs.readFileSync('C:/Program Files/OpenSSL-Win64/bin/PEM/key.pem'),
+//     cert: fs.readFileSync('C:/Program Files/OpenSSL-Win64/bin/PEM/cert.pem')
+// };
+
+// const server = http.createServer(app, (req, res) => {
+//     res.writeHead(200);
+//     // res.end('Hello, HTTPS world!');
+// });
+
+// server.listen(443, () => {
+//     console.log('Server listening on port 443');
+// });
