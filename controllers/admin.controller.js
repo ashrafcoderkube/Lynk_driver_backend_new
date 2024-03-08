@@ -363,6 +363,7 @@ module.exports = {
             const filteredResults = userData.rows.filter((user) => !(user.document_uploaded && user.agreement_verified));
             filteredResults.forEach(user => {
               let status = "";
+              const isDocumentUploaded = user.document_uploaded; 
               const isAgreementVerified = user.agreement_verified;
               if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
                 if (isDocumentUploaded && isAgreementVerified) {
@@ -968,7 +969,7 @@ module.exports = {
       });
     }
   },
-  updateUserProfile: async (req, res, next) => {
+  updateUserProfile: async (req, res) => {
     try {
       const userId = req.body.id;
       const email = req.body.email;
