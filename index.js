@@ -35,6 +35,12 @@ con.sync({ alter: true }).then(() => {
     console.log(error.message);
 });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use((req, res, next) => {
+    res.on("finish", () => {
+        console.log(`${req.method} - ${req.originalUrl} - ${res.statusCode}`);
+    });
+    next();
+});
 app.use('/', authRoutes);
 app.use('/agreement', agreementRoutes);
 app.use('/user', userRoutes);

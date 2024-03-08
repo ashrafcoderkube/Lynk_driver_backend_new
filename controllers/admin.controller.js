@@ -69,7 +69,7 @@ module.exports = {
             };
           }
 
-          if (firstName || lastName || email || mobile) {
+          if (firstName || lastName || email || mobile || uid) {
             whereCondition[Sequelize.Op.and] = [];
             if (firstName) {
               whereCondition[Sequelize.Op.and].push({
@@ -96,6 +96,13 @@ module.exports = {
               whereCondition[Sequelize.Op.and].push({
                 mobile_no: {
                   [Sequelize.Op.like]: `%${mobile}%`
+                }
+              });
+            }
+            if (uid) {
+              whereCondition[Sequelize.Op.and].push({
+                user_id: {
+                  [Sequelize.Op.eq]: `${uid}`
                 }
               });
             }
@@ -182,7 +189,7 @@ module.exports = {
             type: type,
             is_deleted: 0
           };
-          if (firstName || lastName || email || mobile) {
+          if (firstName || lastName || email || mobile || uid) {
             whereCondition[Sequelize.Op.and] = [];
             if (firstName) {
               whereCondition[Sequelize.Op.and].push({
@@ -209,6 +216,13 @@ module.exports = {
               whereCondition[Sequelize.Op.and].push({
                 mobile_no: {
                   [Sequelize.Op.like]: `%${mobile}%`
+                }
+              });
+            }
+            if (uid) {
+              whereCondition[Sequelize.Op.and].push({
+                user_id: {
+                  [Sequelize.Op.eq]: `${uid}`
                 }
               });
             }
@@ -341,7 +355,7 @@ module.exports = {
               if (uid) {
                 whereCondition[Sequelize.Op.and].push({
                   user_id: {
-                    [Sequelize.Op.like]: `%${uid}%`
+                    [Sequelize.Op.eq]: `${uid}`
                   }
                 });
               }
@@ -363,7 +377,7 @@ module.exports = {
             const filteredResults = userData.rows.filter((user) => !(user.document_uploaded && user.agreement_verified));
             filteredResults.forEach(user => {
               let status = "";
-              const isDocumentUploaded = user.document_uploaded; 
+              const isDocumentUploaded = user.document_uploaded;
               const isAgreementVerified = user.agreement_verified;
               if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
                 if (isDocumentUploaded && isAgreementVerified) {
@@ -540,24 +554,25 @@ module.exports = {
           const fileStream = fs.createReadStream(filePath);
           fileStream.pipe(res);
 
-          //console.log("fileStream", fileStream);
           // Optionally, you can delete the file after streaming it
-          fileStream.on("end", async () => {
-            // Optionally, you can delete the file after streaming it
-            fs.unlinkSync(filePath);
+           fileStream.on("end", async () => {
+                // Optionally, you can delete the file after streaming it
+                //fs.unlinkSync(filePath);
 
-            // After streaming the file, make a GET request to the desired URL
-            try {
-              await axios.get(
-                `https://lynk-driver.onrender.com/downloads/reports.csv`
-              );
-            } catch (error) {
-              console.error(
-                "Error making GET request to the other API",
-                error
-              );
-            }
-          });
+                // After streaming the file, make a GET request to the desired URL
+                // try {
+                //   await axios.get(
+                //     `https://driverapp.lynk.ie/apiv/downloads/reports.csv`
+                //   );
+                // } catch (error) {
+                //   console.error(
+                //     "Error making GET request to the other API",
+                //     error
+                //   );
+                // }
+              }
+          );
+
           res.sendFile(filePath, (err) => {
             if (err) {
               console.error(err);
@@ -566,6 +581,7 @@ module.exports = {
               //console.log(`File sent: ${filePath}`);
             }
           });
+         // fs.unlinkSync(filePath);
           return;
 
         }
@@ -694,7 +710,7 @@ module.exports = {
       if (id) {
         //soft delete.
         const deleteUser = await userModel.update({
-          is_deleted: true
+          is_deleted: 1
         }, {
           where: { user_id: id }
         });

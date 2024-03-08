@@ -19,7 +19,7 @@ const upload = multer({
 router.get("/users", adminController.getAllUsers);
 router.get("/admins", jwt.verifyToken, adminController.getAllAdmins);
 router.put("/updateAgreement", jwt.verifyToken, adminController.updateAgreement);
-router.get("/exportSearchedUser", jwt.verifyToken, adminController.exportSearchedUser);
+router.get("/exportSearchedUser", adminController.exportSearchedUser);
 router.get("/getHomeData", jwt.verifyToken, adminController.getHomeData);
 router.delete("/deleteUser", jwt.verifyToken, adminController.deleteUsers);
 router.get("/getLastTwoWeekUsers", jwt.verifyToken, adminController.getLastTwoWeekUsers);
