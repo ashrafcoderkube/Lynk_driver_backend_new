@@ -33,7 +33,7 @@ const { CONSTANTS } = require('@firebase/util');
 module.exports = {
   getAllUsers: async (req, res) => {
     try {
-      const { id, uid, page, firstName, lastName, email, mobile, spsv } = req.query;
+      const { id, uid, page, firstName, lastName, email, mobile, spsv, icabbiStatus } = req.query;
       let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
       let type = req.query.type || 'user';
       const sortField = req.query.sortField || "createdAt";
@@ -76,11 +76,12 @@ module.exports = {
                   mobile_no: {
                     [Sequelize.Op.like]: `%${mobile}%`
                   }
-                },
+                }
               ],
               device_type: device_type,
               type: type,
-              is_deleted: 0
+              is_deleted: 0,
+              icabbiStatus: icabbiStatus
             },
             order: [[sortField, sortOrder]],
             limit: pageSize,
@@ -883,7 +884,6 @@ module.exports = {
       });
     }
   },
-
   getUserById: async (req, res) => {
     try {
       const userId = req.query.id;
@@ -917,6 +917,183 @@ module.exports = {
       });
     }
   },
+  updateUserProfile: async (req, res, next) => {
+    try {
+      const userId = req.body.id;
+      const email = req.body.email;
+      let existUser = await userModel.findOne({
+        where: { email: email, is_deleted: 0 }
+      });
+      existUser = JSON.parse(JSON.stringify(existUser));
+      // const user = await Squery("SELECT * FROM users WHERE _id = ? LIMIT 1", [
+      //   userId,
+      // ]);
+
+      if (!existUser) {
+        res.status(StatusEnum.USER_NOT_FOUND).json({
+          status: StatusEnum.USER_NOT_FOUND,
+          message: Messages.User_Not_Found,
+        });
+      } else {
+        // icabbiStatus
+        if (email === existUser.email) {
+          await userModel.update({
+            first_name: req.body.first_name || existUser.first_name,
+            last_name: req.body.last_name || existUser.last_name,
+            country_code: req.body.country_code || existUser.country_code,
+            device_type: req.body.device_type || existUser.device_type,
+            clicked_to_app: req.body.clicked_to_app || existUser.clicked_to_app,
+            type: req.body.type || existUser.type,
+            email: req.body.email || existUser.email,
+            password: req.body.password || existUser.password,
+            mobile_no: req.body.mobile_no || existUser.mobile_no,
+            spsv: req.body.spsv || existUser.spsv,
+            is_deleted: req.body.is_deleted || existUser.is_deleted,
+            icabbiStatus: req.body.icabbiStatus || existUser.icabbiStatus,
+            profile_image: req.file ? BASEURL + req.file.path : existUser.profile_image,
+          }, {
+            where: { user_id: userId }
+          });
+          // const updateUserQuery = `
+          //           UPDATE users
+          //           SET first_name = ?, last_name = ?, country_code = ?, device_type = ?,
+          //               clicked_to_app = ?, type = ?, email = ?, password = ?,
+          //               mobile_no = ?, spsv = ?, is_deleted = ?,icabbiStatus = ?, profile_image = ?
+          //           WHERE _id = ?
+          //       `;
+
+          // await Squery(updateUserQuery, [
+          //   req.body.first_name || user[0].first_name,
+          //   req.body.last_name || user[0].last_name,
+          //   req.body.country_code || user[0].country_code,
+          //   req.body.device_type || user[0].device_type,
+          //   req.body.clicked_to_app || user[0].clicked_to_app,
+          //   req.body.type || user[0].type,
+          //   req.body.email || user[0].email,
+          //   req.body.password || user[0].password,
+          //   req.body.mobile_no || user[0].mobile_no,
+          //   req.body.spsv || user[0].spsv,
+          //   req.body.is_deleted || user[0].is_deleted,
+          //   req.body.icabbiStatus || user[0].icabbiStatus,
+          //   req.file ? BASEURL + req.file.path : user[0].profile_image,
+          //   userId,
+          // ]);
+          let updatedUser = await userModel.findOne({
+            where: { user_id: userId, is_deleted: 0 },
+            include: [{
+              as: 'attachment',
+              model: documentModel
+            }]
+          });
+          updatedUser = JSON.parse(JSON.stringify(updatedUser));
+          // const updatedUser = await Squery('SELECT * FROM users LEFT JOIN docs ON users._id = docs.user_id WHERE users._id = ?', [userId]);
+
+          if (req.file) {
+            const fullName = updatedUser.first_name + updatedUser.last_name;
+            const title = "Profile Image Updated";
+            const subTitle1 = "We received a new doc from this driver: " + fullName;
+            const subTitle2 = "here is driver's id: " + updatedUser.user_id;
+            const isForgotPassword = false;
+            const isAdminRegister = false;
+            sendMail(
+              BASEURL + req.file.path,
+              updatedUser.email,
+              fullName,
+              updatedUser.user_id,
+              subTitle2,
+              BASEURL + req.file.path,
+              isForgotPassword,
+              isAdminRegister
+            );
+          }
+          // data._id = parseInt(userId, 0);
+          res.status(StatusEnum.SUCCESS).json({
+            status: StatusEnum.SUCCESS,
+            message: "User updated successfully",
+            data: updatedUser
+          });
+        } else {
+          // const isEmail = await Squery(
+          //   "SELECT * FROM users WHERE email = ? LIMIT 1",
+          //   [email]
+          // );
+          const isEmail = await userModel.findOne({
+            where: { email: email, is_deleted: 0 }
+          });
+          if (isEmail) {
+            res.status(StatusEnum.ALREADY_EXIST).json({
+              status: StatusEnum.ALREADY_EXIST,
+              message: StatusMessages.ALREADY_EXIST,
+            });
+          } else {
+            await userModel.update({
+              first_name: req.body.first_name || existUser.first_name,
+              last_name: req.body.last_name || existUser.last_name,
+              country_code: req.body.country_code || existUser.country_code,
+              device_type: req.body.device_type || existUser.device_type,
+              clicked_to_app: req.body.clicked_to_app || existUser.clicked_to_app,
+              type: req.body.type || existUser.type,
+              email: req.body.email || existUser.email,
+              password: req.body.password || existUser.password,
+              mobile_no: req.body.mobile_no || existUser.mobile_no,
+              spsv: req.body.spsv || existUser.spsv,
+              is_deleted: req.body.is_deleted || existUser.is_deleted,
+              icabbiStatus: req.body.icabbiStatus || existUser.icabbiStatus,
+              profile_image: req.file ? BASEURL + req.file.path : existUser.profile_image,
+            }, {
+              where: { user_id: userId }
+            });
+
+            // const updatedUser = await Squery(
+            //   "SELECT * FROM users WHERE _id = ? LIMIT 1",
+            //   [userId]
+            // );
+            let updatedUser = await userModel.findOne({
+              where: { user_id: userId, is_deleted: 0 },
+              include: [{
+                as: 'attachment',
+                model: documentModel
+              }]
+            });
+            updatedUser = JSON.parse(JSON.stringify(updatedUser));
+            if (req.file) {
+              const fullName = updatedUser.first_name + updatedUser.last_name;
+              const title = "Profile Image Updated";
+              const subTitle1 = "We received a new doc from this driver: " + fullName;
+              const subTitle2 = "here is driver's id: " + updatedUser.user_id;
+              const isForgotPassword = false;
+              const isAdminRegister = false;
+              sendMail(
+                BASEURL + req.file.path,
+                updatedUser.email,
+                fullName,
+                updatedUser.user_id,
+                subTitle2,
+                BASEURL + req.file.path,
+                isForgotPassword,
+                isAdminRegister
+              );
+            }
+
+            res.status(StatusEnum.SUCCESS).json({
+              status: StatusEnum.SUCCESS,
+              message: "User updated successfully",
+              data: updatedUser
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  },
+
+
+
   /// Leads Flow
   addLeads: async (req, res) => {
     try {

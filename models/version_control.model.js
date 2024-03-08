@@ -27,7 +27,7 @@ const version_control = con.define('version_control', {
     }
 }, {
     tableName: 'version_control',
-    timestamps: true
+    timestamps: false
 });
 
 module.exports = version_control;

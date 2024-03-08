@@ -2,8 +2,21 @@ const adminController = require('../controllers/admin.controller');
 const express = require('express');
 const router = express.Router();
 const jwt = require('../Utils/jwtToken');
+const multer = require('multer');
 
-router.get("/users", jwt.verifyToken, adminController.getAllUsers);
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, callback) => {
+            callback(null, 'uploads/');
+        },
+        filename: (req, file, callback) => {
+            const fileName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            callback(null, file.fieldname + '-' + fileName + '.' + file.originalname.split('.').pop());
+        },
+    })
+});
+
+router.get("/users", adminController.getAllUsers);
 router.get("/admins", jwt.verifyToken, adminController.getAllAdmins);
 router.put("/updateAgreement", jwt.verifyToken, adminController.updateAgreement);
 router.get("/exportSearchedUser", jwt.verifyToken, adminController.exportSearchedUser);
@@ -11,7 +24,7 @@ router.get("/getHomeData", jwt.verifyToken, adminController.getHomeData);
 router.delete("/deleteUser", jwt.verifyToken, adminController.deleteUsers);
 router.get("/getLastTwoWeekUsers", jwt.verifyToken, adminController.getLastTwoWeekUsers);
 router.get("/getAllReports", jwt.verifyToken, adminController.getAllReports);
-
+router.post("/profileUpdate", jwt.verifyToken, upload.single("profile_image"), adminController.updateUserProfile);
 //Leads routes
 router.post("/addLeads", jwt.verifyToken, adminController.addLeads);
 router.get("/getAllLeads", jwt.verifyToken, adminController.getAllLeads);
