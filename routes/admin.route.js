@@ -25,6 +25,7 @@ router.delete("/deleteUser", jwt.verifyToken, adminController.deleteUsers);
 router.get("/getLastTwoWeekUsers", jwt.verifyToken, adminController.getLastTwoWeekUsers);
 router.get("/getAllReports", jwt.verifyToken, adminController.getAllReports);
 router.post("/profileUpdate", jwt.verifyToken, upload.single("profile_image"), adminController.updateUserProfile);
+router.get("/getuser", jwt.verifyToken, adminController.getUserById);
 //Leads routes
 router.post("/addLeads", jwt.verifyToken, adminController.addLeads);
 router.get("/getAllLeads", jwt.verifyToken, adminController.getAllLeads);

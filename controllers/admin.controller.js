@@ -5,7 +5,7 @@ const leadsModel = require('../models/leads.model');
 const messageModel = require('../models/messages.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Sequelize, Op } = require('sequelize');
+const { Sequelize, Op, where } = require('sequelize');
 const exceljs = require('exceljs');
 const fs = require('fs');
 const path = require('path');
@@ -53,47 +53,8 @@ module.exports = {
           const page = parseInt(req.query.page) || 1;
           const pageSize = 10;
           const offset = (page - 1) * pageSize;
-          const totalNumberOfUser = await userModel.count();
-          const totalPages = Math.ceil(totalNumberOfUser / pageSize);
-          // let userData = await userModel.findAndCountAll({
-          //   where: {
-          //     [Sequelize.Op.or]: [
-          //       {
-          //         first_name: {
-          //           [Sequelize.Op.like]: `%${firstName}%`
-          //         }
-          //       },
-          //       {
-          //         last_name: {
-          //           [Sequelize.Op.like]: `%${lastName}%`
-          //         }
-          //       },
-          //       {
-          //         email: {
-          //           [Sequelize.Op.like]: `%${email}%`
-          //         }
-          //       },
-          //       {
-          //         mobile_no: {
-          //           [Sequelize.Op.like]: `%${mobile}%`
-          //         }
-          //       }
-          //     ],
-          //     device_type: device_type,
-          //     type: type,
-          //     is_deleted: 0,
-          //     icabbiStatus: icabbiStatus
-          //   },
-          //   order: [[sortField, sortOrder]],
-          //   limit: pageSize,
-          //   offset: offset,
-          //   include: [{
-          //     as: 'attachment',
-          //     model: documentModel
-          //   }]
-          // });
           let whereCondition = {};
-          if(typeof icabbiStatus == "undefined"){
+          if (typeof icabbiStatus == "undefined") {
             whereCondition = {
               device_type: device_type,
               type: type,
@@ -109,37 +70,38 @@ module.exports = {
           }
 
           if (firstName || lastName || email || mobile) {
-            whereCondition[Sequelize.Op.or] = [];
+            whereCondition[Sequelize.Op.and] = [];
             if (firstName) {
-              whereCondition[Sequelize.Op.or].push({
+              whereCondition[Sequelize.Op.and].push({
                 first_name: {
                   [Sequelize.Op.like]: `%${firstName}%`
                 }
               });
             }
             if (lastName) {
-              whereCondition[Sequelize.Op.or].push({
+              whereCondition[Sequelize.Op.and].push({
                 last_name: {
                   [Sequelize.Op.like]: `%${lastName}%`
                 }
               });
             }
             if (email) {
-              whereCondition[Sequelize.Op.or].push({
+              whereCondition[Sequelize.Op.and].push({
                 email: {
                   [Sequelize.Op.like]: `%${email}%`
                 }
               });
             }
             if (mobile) {
-              whereCondition[Sequelize.Op.or].push({
+              whereCondition[Sequelize.Op.and].push({
                 mobile_no: {
                   [Sequelize.Op.like]: `%${mobile}%`
                 }
               });
             }
           }
-
+          const totalNumberOfUser = await userModel.count({ where: whereCondition });
+          const totalPages = Math.ceil(totalNumberOfUser / pageSize);
           let userData = await userModel.findAndCountAll({
             where: whereCondition,
             order: [[sortField, sortOrder]],
@@ -150,7 +112,6 @@ module.exports = {
               model: documentModel
             }]
           });
-
           userData = JSON.parse(JSON.stringify(userData));
           let registrationComplete = "";
           userData.rows.forEach(user => {
@@ -216,37 +177,46 @@ module.exports = {
           const page = parseInt(req.query.page) || 1;
           const pageSize = 10;
           const offset = (page - 1) * pageSize;
-          const totalNumberOfUser = await userModel.count();
+          let whereCondition = {
+            device_type: device_type,
+            type: type,
+            is_deleted: 0
+          };
+          if (firstName || lastName || email || mobile) {
+            whereCondition[Sequelize.Op.and] = [];
+            if (firstName) {
+              whereCondition[Sequelize.Op.and].push({
+                first_name: {
+                  [Sequelize.Op.like]: `%${firstName}%`
+                }
+              });
+            }
+            if (lastName) {
+              whereCondition[Sequelize.Op.and].push({
+                last_name: {
+                  [Sequelize.Op.like]: `%${lastName}%`
+                }
+              });
+            }
+            if (email) {
+              whereCondition[Sequelize.Op.and].push({
+                email: {
+                  [Sequelize.Op.like]: `%${email}%`
+                }
+              });
+            }
+            if (mobile) {
+              whereCondition[Sequelize.Op.and].push({
+                mobile_no: {
+                  [Sequelize.Op.like]: `%${mobile}%`
+                }
+              });
+            }
+          }
+          const totalNumberOfUser = await userModel.count({ where: whereCondition });
           const totalPages = Math.ceil(totalNumberOfUser / pageSize);
           let userData = await userModel.findAndCountAll({
-            where: {
-              [Sequelize.Op.or]: [
-                {
-                  first_name: {
-                    [Sequelize.Op.like]: `%${firstName}%`
-                  }
-                },
-                {
-                  last_name: {
-                    [Sequelize.Op.like]: `%${lastName}%`
-                  }
-                },
-                {
-                  email: {
-                    [Sequelize.Op.like]: `%${email}%`
-                  }
-                },
-                {
-                  mobile_no: {
-                    [Sequelize.Op.like]: `%${mobile}%`
-                  }
-                },
-              ],
-              device_type: device_type,
-              type: type,
-              is_deleted: 0
-
-            },
+            where: whereCondition,
             order: [[sortField, sortOrder]],
             limit: pageSize,
             offset: offset,
@@ -323,52 +293,63 @@ module.exports = {
             const page = parseInt(req.query.page) || 1;
             const pageSize = 10;
             const offset = (page - 1) * pageSize;
-            const totalNumberOfUser = await userModel.count();
+
+            let whereCondition = {
+              device_type: device_type,
+              is_deleted: 0,
+              document_uploaded: 0,
+              agreement_verified: 0
+            }
+
+            if (firstName || lastName || email || mobile || spsv || icabbiStatus || uid) {
+              whereCondition[Sequelize.Op.and] = [];
+              if (firstName) {
+                whereCondition[Sequelize.Op.and].push({
+                  first_name: {
+                    [Sequelize.Op.like]: `%${firstName}%`
+                  }
+                });
+              }
+              if (lastName) {
+                whereCondition[Sequelize.Op.and].push({
+                  last_name: {
+                    [Sequelize.Op.like]: `%${lastName}%`
+                  }
+                });
+              }
+              if (email) {
+                whereCondition[Sequelize.Op.and].push({
+                  email: {
+                    [Sequelize.Op.like]: `%${email}%`
+                  }
+                });
+              }
+              if (mobile) {
+                whereCondition[Sequelize.Op.and].push({
+                  mobile_no: {
+                    [Sequelize.Op.like]: `%${mobile}%`
+                  }
+                });
+              }
+              if (icabbiStatus) {
+                whereCondition[Sequelize.Op.and].push({
+                  icabbiStatus: {
+                    [Sequelize.Op.like]: `%${icabbiStatus}%`
+                  }
+                });
+              }
+              if (uid) {
+                whereCondition[Sequelize.Op.and].push({
+                  user_id: {
+                    [Sequelize.Op.like]: `%${uid}%`
+                  }
+                });
+              }
+            }
+            const totalNumberOfUser = await userModel.count({ where: whereCondition });
             const totalPages = Math.ceil(totalNumberOfUser / pageSize);
             let userData = await userModel.findAndCountAll({
-              where: {
-                [Sequelize.Op.or]: [
-                  {
-                    first_name: {
-                      [Sequelize.Op.like]: `%${firstName}%`
-                    }
-                  },
-                  {
-                    last_name: {
-                      [Sequelize.Op.like]: `%${lastName}%`
-                    }
-                  },
-                  {
-                    email: {
-                      [Sequelize.Op.like]: `%${email}%`
-                    }
-                  },
-                  {
-                    mobile_no: {
-                      [Sequelize.Op.like]: `%${mobile}%`
-                    }
-                  },
-                  {
-                    icabbiStatus: {
-                      [Sequelize.Op.like]: `%${icabbiStatus}%`
-                    }
-                  },
-                  {
-                    spsv: {
-                      [Sequelize.Op.like]: `%${spsv}%`
-                    }
-                  },
-                  {
-                    user_id: {
-                      [Sequelize.Op.like]: `%${uid}%`
-                    }
-                  }
-                ],
-                device_type: device_type,
-                is_deleted: 0,
-                document_uploaded: 0,
-                agreement_verified: 0
-              },
+              where: whereCondition,
               order: [[sortField, sortOrder]],
               limit: pageSize,
               offset: offset,
@@ -380,15 +361,9 @@ module.exports = {
             });
             userData = JSON.parse(JSON.stringify(userData));
             const filteredResults = userData.rows.filter((user) => !(user.document_uploaded && user.agreement_verified));
-
-            // Iterate over the results array and add the 'status' field to each user object
             filteredResults.forEach(user => {
               let status = "";
-              // //console.log('user:', user);
-              // Assuming 'isDocumentUploaded' and 'isAgreementVerified' are properties of the user object
-              const isDocumentUploaded = user.document_uploaded; // Replace with the actual property name
-              const isAgreementVerified = user.agreement_verified; // Replace with the actual property name
-              // Check if the properties exist before evaluating the condition
+              const isAgreementVerified = user.agreement_verified;
               if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
                 if (isDocumentUploaded && isAgreementVerified) {
                   status = "Sign Up Complete";
@@ -950,23 +925,39 @@ module.exports = {
       if (!userId) {
         res.status().json({ message: "Please provide user id." });
       } else {
-        const userData = await userModel.findOne({
+        let userData = await userModel.findOne({
           where: { user_id: userId },
           include: [{
             as: 'attachment',
             model: documentModel
           }]
         });
+        userData = JSON.parse(JSON.stringify(userData));
         if (userData) {
+          let registrationComplete = "";
+          const isDocumentUploaded = userData.document_uploaded;
+          const isAgreementVerified = userData.agreement_verified;
+          if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
+            if (isDocumentUploaded && isAgreementVerified) {
+              registrationComplete = "Yes";
+            } else if (!isDocumentUploaded) {
+              registrationComplete = "No";
+            } else if (!isAgreementVerified) {
+              registrationComplete = "No";
+            }
+          } else {
+            console.warn("isDocumentUploaded or isAgreementVerified is not defined for user:", userData);
+          }
+          userData['registrationComplete'] = registrationComplete;
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.SUCCESS,
-            data: JSON.parse(JSON.stringify(userData))
+            data: userData,
           });
         } else {
           res.status(StatusEnum.USER_NOT_FOUND).json({
+            status: StatusEnum.USER_NOT_FOUND,
             message: Messages.User_Not_Found,
-            status: StatusEnum.USER_NOT_FOUND
           });
         }
       }
