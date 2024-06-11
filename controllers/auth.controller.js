@@ -6,6 +6,7 @@ const {
   Messages,
   sendMail,
   getCurrentTime,
+  checkDocumentsAndSendWhatsAppMessage
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
@@ -20,7 +21,7 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const versionControlModel = require('../models/version_control.model');
-
+const userController = require('../controllers/user.controller');
 module.exports = {
 
   login: async (req, res) => {
@@ -170,6 +171,9 @@ module.exports = {
               const redirectUrl = req.file ? (BASEURL + req.file.path) : "";
               const isAdminRegister = false;
               sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
+              setTimeout(() => {
+                checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
+              }, 15 * 60 * 1000);
             } else {
               const fullName = first_name + last_name;
               const title = "New Account Registered";

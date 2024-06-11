@@ -6,7 +6,9 @@ const {
   sendMail,
   getCurrentTime,
   sendMailForIBAN,
-  sendMailForHoliday
+  sendMailForHoliday,
+  checkAgreementsAndSendWhatsAppMessage,
+  checkiCabbiAndSendWhatsAppMessage
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
@@ -21,7 +23,7 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const jwt2 = require('jsonwebtoken');
-
+const { Op } = require('sequelize');
 module.exports = {
   getAttachments: async (req, res) => {
     try {
@@ -264,6 +266,9 @@ module.exports = {
             model: documentModel
           }]
         });
+        setTimeout(() => {
+          checkAgreementsAndSendWhatsAppMessage(userId)
+        }, 60 * 60 * 1000);
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
@@ -500,6 +505,9 @@ module.exports = {
           }, {
             where: { user_id: userId }
           });
+          setTimeout(() => {
+            checkiCabbiAndSendWhatsAppMessage(userId)
+          },15 * 60 * 1000);
 
           let data = await userModel.findOne({
             where: { user_id: userId },
@@ -814,4 +822,41 @@ module.exports = {
       });
     }
   },
+  // checkDocumentsAndSendWhatsAppMessage: async (req, res) => {
+  //   try {
+  //     // Find all users who have registered 15 minutes ago and have pending documents
+  //     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+     
+  //     const users = await userModel.findAll({
+  //       where: {
+  //         createdAt: { [Op.lte]: fifteenMinutesAgo },
+  //         type: 'user'
+  //       },
+  //       include: [{
+  //         required: false,
+  //         as: 'attachment',
+  //         model: documentModel
+  //       }]
+  //     });
+
+  //     users.forEach(async (user) => {
+  //       const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
+  //       if (pendingDocuments.length > 0) {
+  //         const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no , user.first_name + " " +user.last_name, pendingDocuments);
+  //         res.status(StatusEnum.SUCCESS).json({
+  //           status: StatusEnum.SUCCESS,
+  //           data: data,
+  //           message: Messages.Change_Password_Request,
+  //         })
+  //       }
+  //     });
+  //   } catch (error) {
+  //     res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+  //       status: StatusEnum.INTERNAL_SERVER_ERROR,
+  //       message: error.message
+  //     });
+  //   }
+  // }
+
+
 }

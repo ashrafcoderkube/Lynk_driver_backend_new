@@ -15,6 +15,8 @@ const adminRoutes = require('./routes/admin.route');
 const agreementRoutes = require('./routes/agreement.route');
 const documentRoutes = require('./routes/document.route');
 const authRoutes = require('./routes/auth.route');
+const webhookRoutes = require('./routes/webhook.route');
+
 require('dotenv').config();
 
 const cors = require('cors')
@@ -46,6 +48,7 @@ app.use('/agreement', agreementRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 app.use('/document', documentRoutes);
+app.use('/webhook', webhookRoutes);
 
 app.listen(PORT, (err) => {
     if (err) console.log("Error in server setup")

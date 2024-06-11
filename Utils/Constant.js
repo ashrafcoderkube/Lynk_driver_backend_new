@@ -1,6 +1,9 @@
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require('path');
+const axios = require('axios');
+const userModel = require('../models/user.model');
+const documentModel = require('../models/document.model');
 
 const acchtml = path.join(__dirname, '../Utils/new-acc.html');
 const forgothtml = path.join(__dirname, '../Utils/forget.html');
@@ -129,13 +132,21 @@ const SOCKET = {
 // }
 // "darren.okeeffe@lynk.ie"
 function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPASSWORD = false, ISADMINREGISTER = false, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  // return new Promise((resolve, reject) => {
+  //   const transporter = nodemailer.createTransport({
+  //     host: 'localhost',
+  //     port: 25,
+  //     secure: false,
+  //     tls: {
+  //       rejectUnauthorized: false
+  //     }
+  //   });
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
+    var transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.MY_EMAIL,
+        pass: process.env.MY_PASSWORD
       }
     });
     console.log("send mail-------" + ISFORGOTPASSWORD);
@@ -342,7 +353,146 @@ const getCurrentTime = () => {
   const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
   return currentTime.toLocaleString('en-US', options);
 };
-
+async function checkDocumentsAndSendWhatsAppMessage(user_id) {
+  try {
+    let user = await userModel.findOne({
+      where: {
+        user_id: user_id
+      },
+      include: [{
+        required: false,
+        as: 'attachment',
+        model: documentModel
+      }]
+    });
+    user = JSON.parse(JSON.stringify(user));
+    // users.forEach(async (user) => {
+    if (user) {
+      const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
+      if (pendingDocuments.length > 0) {
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, pendingDocuments, user.user_id, 'missing_document');
+        return data;
+      }
+      // });
+    } else {
+      return false
+    }
+  } catch (error) {
+    return error.message
+  }
+}
+async function checkAgreementsAndSendWhatsAppMessage(user_id) {
+  try {
+    let user = await userModel.findOne({
+      where: {
+        user_id: user_id
+      }
+    });
+    user = JSON.parse(JSON.stringify(user));
+    if (user) {
+      if (user.agreement_verified == false) {
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, "", user.user_id, 'missing_driver_agreement');
+        return data;
+      }
+    } else {
+      return false;
+    }
+  } catch (error) {
+    return error.message
+  }
+}
+async function checkiCabbiAndSendWhatsAppMessage(user_id) {
+  try {
+    let user = await userModel.findOne({
+      where: {
+        user_id: user_id
+      }
+    });
+    user = JSON.parse(JSON.stringify(user));
+    if (user) {
+      if (user.clicked_to_app == 'NO') {
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, "", user.user_id, 'missing_icabbi_driver_app');
+        return data;
+      }
+    } else {
+      return false;
+    }
+  } catch (error) {
+    return error.message
+  }
+}
+async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocuments, user_id, templateName) {
+  try {
+    const templateMap = new Map([
+      ["missing_document", 0],
+      ["missing_driver_agreement", 1],
+      ["missing_icabbi_driver_app", 2]
+    ]);
+    const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
+    if (pendingDocuments != "") {
+      const documents = pendingDocuments.length > 0 ? pendingDocuments.join(", ") : pendingDocuments
+      const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
+        messages: [
+          {
+            to: mobileNo,
+            content: {
+              templateName: templateName,
+              language: 'en',
+              templateData: {
+                body: {
+                  "placeholders": [driverName, documents]
+                },
+              },
+              from: '+353858564510'
+            },
+          },
+        ],
+      }, {
+        headers: {
+          'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
+        },
+      });
+      await userModel.update({
+        template_id: 0,
+        message_id: response.data.messages[0].messageId
+      }, {
+        where: { user_id: user_id }
+      });
+      return response.data;
+    } else {
+      const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
+        messages: [
+          {
+            to: mobileNo,
+            content: {
+              templateName: templateName,
+              language: 'en',
+              templateData: {
+                body: {
+                  "placeholders": [driverName]
+                },
+              },
+              from: '+353858564510'
+            },
+          },
+        ],
+      }, {
+        headers: {
+          'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
+        },
+      });
+      await userModel.update({
+        template_id: template_id,
+        message_id: response.data.messages[0].messageId
+      }, {
+        where: { user_id: user_id }
+      });
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);
+  }
+}
 module.exports = {
   SOCKET,
   StatusEnum,
@@ -356,6 +506,10 @@ module.exports = {
   generateDynamicLink,
   sendMailForHoliday,
   sendMailForProfileUpdate,
-  getCurrentTime
+  getCurrentTime,
+  sendDoubletickWhatsAppMessage,
+  checkDocumentsAndSendWhatsAppMessage,
+  checkAgreementsAndSendWhatsAppMessage,
+  checkiCabbiAndSendWhatsAppMessage
 }
 

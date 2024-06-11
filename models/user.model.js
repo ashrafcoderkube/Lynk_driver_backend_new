@@ -91,6 +91,12 @@ const user = con.define('users', {
     icabbiStatus: {
         type: DataTypes.INTEGER,
         defaultValue: 0
+    },
+    template_id: {
+        type: DataTypes.INTEGER
+    },
+    message_id: {
+        type: DataTypes.STRING
     }
 }, {
     tableName: 'users',

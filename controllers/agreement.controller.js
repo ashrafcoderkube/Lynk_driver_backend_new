@@ -39,7 +39,7 @@ module.exports = {
         } catch (error) {
             res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
                 status: StatusEnum.INTERNAL_SERVER_ERROR,
-                message: "Internal Server Error",
+                message: error.message,
             });
         }
     },
