@@ -258,6 +258,9 @@ module.exports = {
           }, {
             where: { user_id: userId }
           });
+          setTimeout(() => {
+            checkAgreementsAndSendWhatsAppMessage(userId)
+          }, 60 * 60 * 1000);
         }
         const data = await userModel.findOne({
           where: { user_id: userId },
@@ -265,10 +268,7 @@ module.exports = {
             as: 'attachment',
             model: documentModel
           }]
-        });
-        setTimeout(() => {
-          checkAgreementsAndSendWhatsAppMessage(userId)
-        }, 60 * 60 * 1000);
+        }); 
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
