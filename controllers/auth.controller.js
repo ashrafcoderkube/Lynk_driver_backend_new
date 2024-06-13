@@ -173,7 +173,7 @@ module.exports = {
               sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
               setTimeout(() => {
                 checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
-              }, 15 * 60 * 1000);
+              }, 15 * 60 * 1000 );
             } else {
               const fullName = first_name + last_name;
               const title = "New Account Registered";

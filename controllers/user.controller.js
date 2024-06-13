@@ -260,7 +260,7 @@ module.exports = {
           });
           setTimeout(() => {
             checkAgreementsAndSendWhatsAppMessage(userId)
-          }, 60 * 60 * 1000);
+          }, 15 * 60 * 1000);
         }
         const data = await userModel.findOne({
           where: { user_id: userId },
@@ -268,7 +268,7 @@ module.exports = {
             as: 'attachment',
             model: documentModel
           }]
-        }); 
+        });
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
@@ -507,7 +507,7 @@ module.exports = {
           });
           setTimeout(() => {
             checkiCabbiAndSendWhatsAppMessage(userId)
-          },15 * 60 * 1000);
+          }, 15 * 60 * 1000);
 
           let data = await userModel.findOne({
             where: { user_id: userId },
@@ -826,7 +826,7 @@ module.exports = {
   //   try {
   //     // Find all users who have registered 15 minutes ago and have pending documents
   //     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-     
+
   //     const users = await userModel.findAll({
   //       where: {
   //         createdAt: { [Op.lte]: fifteenMinutesAgo },

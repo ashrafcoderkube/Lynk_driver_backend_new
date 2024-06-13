@@ -97,6 +97,9 @@ const user = con.define('users', {
     },
     message_id: {
         type: DataTypes.STRING
+    },
+    message: {
+        type: DataTypes.STRING
     }
 }, {
     tableName: 'users',
