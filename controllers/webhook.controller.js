@@ -16,7 +16,7 @@ module.exports = {
                 attributes: ['template_id', 'message', 'user_id']
             });
             let reply;
-            switch (data.template_id) {
+            switch (data?.template_id) {
                 case 0:
                     if (message.text.toLowerCase() === "i'm not ready yet") {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
