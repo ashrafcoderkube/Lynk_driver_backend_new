@@ -22,6 +22,7 @@ const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const versionControlModel = require('../models/version_control.model');
 const userController = require('../controllers/user.controller');
+const sequelize = require('sequelize');
 module.exports = {
 
   login: async (req, res) => {
@@ -113,13 +114,24 @@ module.exports = {
         res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({ message: "Please provide type." })
       } else {
         const existUser = await userModel.findOne({
-          where: { email: email, is_deleted: 0 }
+          where: {
+            [sequelize.Op.or]: {
+              email: email,
+              mobile_no: mobile_no
+            }, is_deleted: 0
+          }
         });
-        if (existUser) {
+        if (existUser?.email == email) {
           res.status(StatusEnum.ALREADY_EXIST).json({
             status: StatusEnum.ALREADY_EXIST,
             data: Messages.Email_Already_Registered,
             message: StatusMessages.ALREADY_EXIST,
+          });
+        } else if (existUser?.mobile_no == mobile_no) {
+          res.status(StatusEnum.ALREADY_EXIST).json({
+            status: StatusEnum.ALREADY_EXIST,
+            data: Messages.Phone_Number_Registered,
+            message: StatusMessages.PHONENUMBER_ALREADY_EXIST,
           });
         } else {
           if (validateEmail(email)) {
@@ -173,7 +185,7 @@ module.exports = {
               sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
               setTimeout(() => {
                 checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
-              }, 15 * 60 * 1000 );
+              }, 15 * 60 * 1000);
             } else {
               const fullName = first_name + last_name;
               const title = "New Account Registered";
