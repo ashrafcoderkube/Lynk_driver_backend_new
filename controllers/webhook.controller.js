@@ -6,14 +6,14 @@ const userModel = require('../models/user.model');
 // Function to handle incoming webhook requests
 module.exports = {
     handleWebhook: async (req, res) => {
-        const { to, from, message, contact, dtMessageId } = req.body;
+        const { to, from, message, contact, dtMessageId, dtLastMessageId } = req.body;
         try {
             if (!message.text) {
                 return res.status(400).send({ error: 'Response is required' });
             }
             const data = await userModel.findOne({
-                where: { message_id: dtMessageId },
-                attributes: ['template_id', 'message', 'user_id']
+                where: { message_id: dtLastMessageId },
+                attributes: ['template_id', 'message', 'user_id', 'first_name', 'last_name']
             });
             let reply;
             switch (data?.template_id) {
@@ -22,7 +22,7 @@ module.exports = {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
-                                    to: to,
+                                    to: from,
                                     content: {
                                         templateName: 'document_not_ready_reply',
                                         language: 'en',
@@ -31,7 +31,7 @@ module.exports = {
                                                 "placeholders": []
                                             },
                                         },
-                                        from: '+353858564510'
+                                        from: to
                                     },
                                 },
                             ],
@@ -51,13 +51,13 @@ module.exports = {
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else if (message.text.toLowerCase() === 'yes' && data.message.toLowerCase() === "i'm not ready yet") {
-                        reply = `Sure ${contact.name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -77,13 +77,13 @@ module.exports = {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
                     } else if (message.text.toLowerCase() === 'no' && data.message.toLowerCase() === "i'm not ready yet") {
-                        reply = `Sounds good ${contact.name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
+                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -112,8 +112,8 @@ module.exports = {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -136,13 +136,13 @@ module.exports = {
                     break;
                 case 1:
                     if (message.text.toLowerCase() == 'yes' && data.message.toLowerCase() == 'no' && data.template_id == 1) {
-                        reply = `Sure ${contact.name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -165,16 +165,16 @@ module.exports = {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
-                                    to: to,
+                                    to: from,
                                     content: {
                                         templateName: 'agreement_template_for_yes',
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [contact.name]
+                                                "placeholders": [data.first_name + " " + data.last_name]
                                             },
                                         },
-                                        from: '+353858564510'
+                                        from: to
                                     },
                                 },
                             ],
@@ -194,13 +194,13 @@ module.exports = {
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else if (message.text.toLowerCase() === 'no' && data.message.toLowerCase() === 'no') {
-                        reply = `Sounds good ${contact.name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!`;
+                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -223,16 +223,16 @@ module.exports = {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
-                                    to: to,
+                                    to: from,
                                     content: {
                                         templateName: 'document_not_ready_reply',
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [contact.name]
+                                                "placeholders": [data.first_name + " " + data.last_name]
                                             },
                                         },
-                                        from: '+353858564510'
+                                        from: to
                                     },
                                 },
                             ],
@@ -261,8 +261,8 @@ module.exports = {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -285,13 +285,13 @@ module.exports = {
                     break;
                 case 2:
                     if (message.text.toLowerCase() == 'yes' && data.message.toLowerCase() == 'no' && data.template_id == 2) {
-                        reply = `Sure ${contact.name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -314,16 +314,16 @@ module.exports = {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
-                                    to: to,
+                                    to: from,
                                     content: {
                                         templateName: 'icabbi_template_for_yes',
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [contact.name]
+                                                "placeholders": [data.first_name + " " + data.last_name]
                                             },
                                         },
-                                        from: '+353858564510'
+                                        from: to
                                     },
                                 },
                             ],
@@ -342,14 +342,14 @@ module.exports = {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
-                    } else if ((message.text.toLowerCase() === 'no' && data.message.toLowerCase() === 'no') || message.text.toLowerCase() == "already have the icabbi") {
-                        reply = `Sounds good ${contact.name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!`;
+                    } else if ((message.text.toLowerCase() === 'no' && data.message.toLowerCase() === 'no') || message.text.toLowerCase() == "already have iCabbi app") {
+                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -372,16 +372,16 @@ module.exports = {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
-                                    to: to,
+                                    to: from,
                                     content: {
                                         templateName: 'document_not_ready_reply',
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [contact.name]
+                                                "placeholders": [data.first_name + " " + data.last_name]
                                             },
                                         },
-                                        from: '+353858564510'
+                                        from: to
                                     },
                                 },
                             ],
@@ -410,8 +410,8 @@ module.exports = {
                             "content": {
                                 "text": reply
                             },
-                            "from": from,
-                            "to": to
+                            "from": to,
+                            "to": from
 
                         }, {
                             headers: {
@@ -464,15 +464,9 @@ module.exports = {
 function isWithinBusinessHours() {
     const now = new Date();
     const dayOfWeek = now.getDay();
-    const hour = now.getHours();
+    const hour = now.getHours() + 1; //+1 to the UTC time as per the Ireland timezone.
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
     const isWithinHours = hour >= 9 && hour < 16;
 
-    // Check if tomorrow is a working day
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const tomorrowDayOfWeek = tomorrow.getDay();
-    const isTomorrowWeekday = tomorrowDayOfWeek >= 1 && tomorrowDayOfWeek <= 5;
-
-    return (isWeekday && isWithinHours) || isTomorrowWeekday;
+    return isWeekday && isWithinHours;
 }
