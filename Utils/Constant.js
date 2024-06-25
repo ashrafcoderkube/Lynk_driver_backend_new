@@ -412,7 +412,7 @@ async function checkiCabbiAndSendWhatsAppMessage(user_id) {
     });
     user = JSON.parse(JSON.stringify(user));
     if (user) {
-      if (user.clicked_to_app == 'NO') {
+      if (user.clicked_to_app == 'No') {
         const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, "", user.user_id, 'third_template_missing_icabbi_driver_app_v2');
         return data;
       }

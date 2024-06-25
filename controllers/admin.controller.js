@@ -209,9 +209,9 @@ module.exports = {
               } else if (!isDocumentUploaded) {
                 registrationComplete = "No";
               } else if (!isAgreementVerified) {
-                registrationComplete = "NO";
+                registrationComplete = "No";
               } else if (!isIBANVerified) {
-                registrationComplete = "NO"
+                registrationComplete = "No"
               }
             } else {
               console.warn("isDocumentUploaded or isAgreementVerified or isIBANVerified is not defined for user:", user);
@@ -386,8 +386,10 @@ module.exports = {
             let whereCondition = {
               device_type: device_type,
               is_deleted: 0,
-              document_uploaded: 0,
-              agreement_verified: 0,
+              [Sequelize.Op.or]: [
+                { agreement_verified: 0 },
+                { document_uploaded: 0 }
+              ],
               type: 'user'
             }
 
@@ -638,14 +640,14 @@ module.exports = {
               });
             }
           }
-          const page = parseInt(req.query.page) || 1;
-          const pageSize = 10;
-          const offset = (page - 1) * pageSize;
+          // const page = parseInt(req.query.page) || 1;
+          // const pageSize = 10;
+          // const offset = (page - 1) * pageSize;
           let userData = await userModel.findAndCountAll({
             where: whereCondition,
             order: [[sortField, sortOrder]],
-            limit: pageSize,
-            offset: offset,
+            // limit: pageSize,
+            // offset: offset,
           });
           userData = JSON.parse(JSON.stringify(userData));
           const updatedResults = await Promise.all(userData.rows.map(async (user) => {
@@ -666,6 +668,7 @@ module.exports = {
                 user
               );
             }
+            user['registrationComplete'] = registrationComplete;
             let data = await userModel.findOne({
               where: { user_id: user.user_id },
               include: [{
@@ -779,15 +782,17 @@ module.exports = {
             let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
             const sortField = req.query.sortField || "createdAt";
             const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
-            const page = parseInt(req.query.page) || 1;
-            const pageSize = 10;
-            const offset = (page - 1) * pageSize;
+            // const page = parseInt(req.query.page) || 1;
+            // const pageSize = 10;
+            // const offset = (page - 1) * pageSize;
 
             let whereCondition = {
               device_type: device_type,
               is_deleted: 0,
-              document_uploaded: 0,
-              agreement_verified: 0,
+              [Sequelize.Op.or]: [
+                { agreement_verified: 0 },
+                { document_uploaded: 0 }
+              ],
               type: 'user'
             }
 
@@ -848,8 +853,8 @@ module.exports = {
             let userData = await userModel.findAndCountAll({
               where: whereCondition,
               order: [[sortField, sortOrder]],
-              limit: pageSize,
-              offset: offset,
+              // limit: pageSize,
+              // offset: offset,
               include: [{
                 required: true,
                 as: 'attachment',

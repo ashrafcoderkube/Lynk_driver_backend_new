@@ -390,7 +390,7 @@ module.exports = {
                         await userModel.update({
                             message: message?.text,
                             message_id: response.data?.messages[0].messageId,
-                            clicked_to_app: 'YES'
+                            clicked_to_app: 'Yes'
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -417,7 +417,7 @@ module.exports = {
                             dynamicData = {
                                 message: message?.text,
                                 message_id: response.data?.messageId,
-                                clicked_to_app: 'YES'
+                                clicked_to_app: 'Yes'
                             };
                         } else {
                             dynamicData = {

@@ -191,97 +191,164 @@ module.exports = {
       });
     }
   },
+  // UploadImage: async (req, res) => {
+  //   try {
+  //     const userId = req.body.userId;
+  //     const imageFiles = req.files;
+  //     const docIds = req.body.docIds.split(", ");
+  //     const isRegistered = req.body.isRegistered || "false";
+  //     let imageDocs = [];
+
+  //     for (let i = 0; i < docIds.length; i++) {
+  //       const file = imageFiles[i];
+  //       const docId = docIds[i];
+
+  //       imageDocs.push({
+  //         document_id: docId,
+  //         document_url: BASEURL + file.path,
+  //       });
+  //     }
+
+  //     let userDetails = await userModel.findOne({
+  //       where: { user_id: userId }
+  //     });
+  //     userDetails = JSON.parse(JSON.stringify(userDetails));
+
+  //     if (userDetails) {
+  //       const fullName = userDetails.first_name + " " + userDetails.last_name;
+  //       const title = "New Document Uploaded";
+  //       const subTitle1 = "We received a new doc from this driver: " + fullName;
+
+  //       const isForgotPassword = false;
+  //       const isAdminRegister = false;
+  //       for (const imageDoc of imageDocs) {
+  //         let currentDoc = await documentModel.findOne({
+  //           where: { document_id: imageDoc.document_id }
+  //         });
+  //         currentDoc = JSON.parse(JSON.stringify(currentDoc));
+  //         const subTitle2 = currentDoc.document_name + " - " + fullName;
+  //         sendMail(
+  //           imageDoc.document_url,
+  //           userDetails.email,
+  //           fullName,
+  //           userId,
+  //           subTitle2,
+  //           imageDoc.document_url,
+  //           isForgotPassword,
+  //           isAdminRegister
+  //         );
+
+  //         // Update the document URL in the docs table
+  //         await documentModel.update({
+  //           document_url: imageDoc.document_url
+  //         }, {
+  //           where: { document_id: imageDoc.document_id }
+  //         });
+  //       }
+
+  //       // Update the document_uploaded flag in the users table
+  //       if (req.body.document_uploaded === "false") {
+  //         await userModel.update({
+  //           document_uploaded: false
+  //         }, {
+  //           where: { user_id: userId }
+  //         });
+  //       } else {
+  //         await userModel.update({
+  //           document_uploaded: true
+  //         }, {
+  //           where: { user_id: userId }
+  //         });
+  //         // setTimeout(() => {
+  //         //   checkAgreementsAndSendWhatsAppMessage(userId)
+  //         // }, 15 * 60 * 1000);
+  //       }
+  //       const data = await userModel.findOne({
+  //         where: { user_id: userId },
+  //         include: [{
+  //           as: 'attachment',
+  //           model: documentModel
+  //         }]
+  //       });
+  //       res.status(StatusEnum.SUCCESS).json({
+  //         status: StatusEnum.SUCCESS,
+  //         message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
+  //         data: JSON.parse(JSON.stringify(data)),
+  //       });
+  //     } else {
+  //       res.status(StatusEnum.USER_NOT_FOUND).json({
+  //         status: StatusEnum.USER_NOT_FOUND,
+  //         message: Messages.User_Not_Found,
+  //       });
+  //       return;
+  //     }
+  //   } catch (error) {
+  //     res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+  //       status: StatusEnum.INTERNAL_SERVER_ERROR,
+  //       message: error.message,
+  //     });
+  //   }
+  // },
   UploadImage: async (req, res) => {
     try {
-      const userId = req.body.userId;
+      const { userId, docIds, isRegistered = "false", document_uploaded = "false" } = req.body;
       const imageFiles = req.files;
-      const docIds = req.body.docIds.split(", ");
-      const isRegistered = req.body.isRegistered || "false";
-      let imageDocs = [];
+      const docIdArray = docIds.split(", ");
+      const imageDocs = imageFiles.map((file, index) => ({
+        document_id: docIdArray[index],
+        document_url: BASEURL + file.path,
+      }));
 
-      for (let i = 0; i < docIds.length; i++) {
-        const file = imageFiles[i];
-        const docId = docIds[i];
-
-        imageDocs.push({
-          document_id: docId,
-          document_url: BASEURL + file.path,
-        });
-      }
-
-      let userDetails = await userModel.findOne({
-        where: { user_id: userId }
-      });
-      userDetails = JSON.parse(JSON.stringify(userDetails));
-
-      if (userDetails) {
-        const fullName = userDetails.first_name + " " + userDetails.last_name;
-        const title = "New Document Uploaded";
-        const subTitle1 = "We received a new doc from this driver: " + fullName;
-
-        const isForgotPassword = false;
-        const isAdminRegister = false;
-        for (const imageDoc of imageDocs) {
-          let currentDoc = await documentModel.findOne({
-            where: { document_id: imageDoc.document_id }
-          });
-          currentDoc = JSON.parse(JSON.stringify(currentDoc));
-          const subTitle2 = currentDoc.document_name + " - " + fullName;
-          sendMail(
-            imageDoc.document_url,
-            userDetails.email,
-            fullName,
-            userId,
-            subTitle2,
-            imageDoc.document_url,
-            isForgotPassword,
-            isAdminRegister
-          );
-
-          // Update the document URL in the docs table
-          await documentModel.update({
-            document_url: imageDoc.document_url
-          }, {
-            where: { document_id: imageDoc.document_id }
-          });
-        }
-
-        // Update the document_uploaded flag in the users table
-        if (req.body.document_uploaded === "false") {
-          await userModel.update({
-            document_uploaded: false
-          }, {
-            where: { user_id: userId }
-          });
-        } else {
-          await userModel.update({
-            document_uploaded: true
-          }, {
-            where: { user_id: userId }
-          });
-          // setTimeout(() => {
-          //   checkAgreementsAndSendWhatsAppMessage(userId)
-          // }, 15 * 60 * 1000);
-        }
-        const data = await userModel.findOne({
-          where: { user_id: userId },
-          include: [{
-            as: 'attachment',
-            model: documentModel
-          }]
-        });
-        res.status(StatusEnum.SUCCESS).json({
-          status: StatusEnum.SUCCESS,
-          message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
-          data: JSON.parse(JSON.stringify(data)),
-        });
-      } else {
-        res.status(StatusEnum.USER_NOT_FOUND).json({
+      let userDetails = await userModel.findOne({ where: { user_id: userId } });
+      if (!userDetails) {
+        return res.status(StatusEnum.USER_NOT_FOUND).json({
           status: StatusEnum.USER_NOT_FOUND,
           message: Messages.User_Not_Found,
         });
-        return;
       }
+
+      userDetails = userDetails.toJSON();
+      const fullName = `${userDetails.first_name} ${userDetails.last_name}`;
+      const emailPromises = [];
+      const updatePromises = imageDocs.map(async (imageDoc) => {
+        const currentDoc = await documentModel.findOne({ where: { document_id: imageDoc.document_id } });
+        const subTitle2 = `${currentDoc.document_name} - ${fullName}`;
+
+        emailPromises.push(sendMail(
+          imageDoc.document_url,
+          userDetails.email,
+          fullName,
+          userId,
+          subTitle2,
+          imageDoc.document_url,
+          false,
+          false
+        ));
+
+        return documentModel.update(
+          { document_url: imageDoc.document_url },
+          { where: { document_id: imageDoc.document_id } }
+        );
+      });
+
+      await Promise.all(updatePromises);
+      await Promise.all(emailPromises);
+
+      await userModel.update(
+        { document_uploaded: document_uploaded === "true" },
+        { where: { user_id: userId } }
+      );
+
+      const data = await userModel.findOne({
+        where: { user_id: userId },
+        include: [{ as: 'attachment', model: documentModel }],
+      });
+
+      res.status(StatusEnum.SUCCESS).json({
+        status: StatusEnum.SUCCESS,
+        message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
+        data: data.toJSON(),
+      });
     } catch (error) {
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
         status: StatusEnum.INTERNAL_SERVER_ERROR,
