@@ -8,7 +8,8 @@ const {
   sendMailForIBAN,
   sendMailForHoliday,
   checkAgreementsAndSendWhatsAppMessage,
-  checkiCabbiAndSendWhatsAppMessage
+  checkiCabbiAndSendWhatsAppMessage,
+  sendMailForDELETION
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
@@ -154,9 +155,9 @@ module.exports = {
       } else if (!newPassword) {
         res.status(StatusEnum.TOKEN_EXP).json({ message: 'Please provide password.' });
       } else {
-        const saltRounds = 10;
-        const salt = await bcrypt.genSalt(saltRounds);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        // const saltRounds = 10;
+        // const salt = await bcrypt.genSalt(saltRounds);
+        // const hashedPassword = await bcrypt.hash(newPassword, salt);
         // Find the user in the database by email
         const existUser = await userModel.findOne({
           where: { email: email }
@@ -171,7 +172,7 @@ module.exports = {
         }
         // Update the user's password
         await userModel.update({
-          password: hashedPassword
+          password: newPassword
         }, {
           where: { email: email }
         });
@@ -225,7 +226,7 @@ module.exports = {
             where: { document_id: imageDoc.document_id }
           });
           currentDoc = JSON.parse(JSON.stringify(currentDoc));
-          const subTitle2 = currentDoc.doc_name + " - " + fullName;
+          const subTitle2 = currentDoc.document_name + " - " + fullName;
           sendMail(
             imageDoc.document_url,
             userDetails.email,
@@ -258,9 +259,9 @@ module.exports = {
           }, {
             where: { user_id: userId }
           });
-          setTimeout(() => {
-            checkAgreementsAndSendWhatsAppMessage(userId)
-          }, 15 * 60 * 1000);
+          // setTimeout(() => {
+          //   checkAgreementsAndSendWhatsAppMessage(userId)
+          // }, 15 * 60 * 1000);
         }
         const data = await userModel.findOne({
           where: { user_id: userId },
@@ -325,7 +326,8 @@ module.exports = {
           );
 
           const userToken = token;
-          const dynamicLink = "https://driverapp.lynk.ie/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isForgotPassword";
+          // const dynamicLink = "https://driverapp.lynk.ie/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isForgotPassword";
+          const dynamicLink = "https://lynk-driver-admin.netlify.app/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isForgotPassword";
           if (userEmail) {
             const title = "Reset Your Password";
             const subTitle1 = "We received a request to reset your password.";
@@ -401,20 +403,23 @@ module.exports = {
           const userEmail = existUser.email;
           const userSPSV = existUser.spsv;
           const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(userId);
-          // sendMailForIBAN(
-          //   subject,
-          //   req.body.iban_code,
-          //   userId,
-          //   fullName,
-          //   userEmail,
-          //   userSPSV,
-          //   dynamicLink
-          // );
+          sendMailForIBAN(
+            subject,
+            req.body.iban_code,
+            userId,
+            fullName,
+            userEmail,
+            userSPSV,
+            dynamicLink
+          );
           await userModel.update({
             is_iban_submitted: true
           }, {
             where: { user_id: id }
           });
+          setTimeout(() => {
+            checkAgreementsAndSendWhatsAppMessage(userId)
+          }, 15 * 60 * 1000);
           let data = await userModel.findOne({
             where: { user_id: id },
             include: [{
@@ -562,19 +567,19 @@ module.exports = {
             const userPhone = userData.mobile_no;
             const userEmail = userData.email;
             const currenttime = getCurrentTime();
-            // sendMailForHoliday(
-            //   subject,
-            //   userId,
-            //   fullName,
-            //   userEmail,
-            //   userSPSV,
-            //   userPhone,
-            //   req.body.driver_no,
-            //   req.body.from,
-            //   req.body.to,
-            //   req.body.reason,
-            //   currenttime
-            // )
+            sendMailForHoliday(
+              subject,
+              userId,
+              fullName,
+              userEmail,
+              userSPSV,
+              userPhone,
+              req.body.driver_no,
+              req.body.from,
+              req.body.to,
+              req.body.reason,
+              currenttime
+            )
             //   .then((response) =>
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
@@ -626,14 +631,14 @@ module.exports = {
             const subject = `Account Deletion Request from Driver ${userData.user_id} ${fullName}`;
 
             const userSPSV = userData.spsv;
-            // sendMailForDELETION(
-            //   subject,
-            //   userData.user_id,
-            //   fullName,
-            //   userEmail,
-            //   userSPSV,
-            //   dynamicLink
-            // )
+            sendMailForDELETION(
+              subject,
+              userData.user_id,
+              fullName,
+              userEmail,
+              userSPSV,
+              dynamicLink
+            )
             //   .then((response) =>
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
@@ -769,7 +774,8 @@ module.exports = {
           // const userId = results[0]._id;
 
           const userToken = userData.authToken;
-          const dynamicLink = "https://driverapp.lynk.ie/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isChangePassword";
+          // const dynamicLink = "https://driverapp.lynk.ie/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isChangePassword";
+          const dynamicLink = "https://lynk-driver-admin.netlify.app/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isChangePassword";
           if (userEmail) {
             const title = "Reset Your Password";
             const subTitle1 = "We received a request to reset your password.";

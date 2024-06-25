@@ -24,11 +24,11 @@ const user = con.define('users', {
         defaultValue: ""
     },
     clicked_to_app: {
-        type: DataTypes.ENUM('YES', 'NO'),
+        type: DataTypes.ENUM('Yes', 'No'),
         defaultValue: "No"
     },
     type: {
-        type: DataTypes.ENUM('user', 'admin', 'superadmin'),
+        type: DataTypes.ENUM('user', 'admin', 'super_admin'),
         defaultValue: "user"
     },
     last_name: {

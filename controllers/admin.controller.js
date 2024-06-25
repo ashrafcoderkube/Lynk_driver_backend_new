@@ -32,9 +32,73 @@ const { CONSTANTS } = require('@firebase/util');
 const e = require('express');
 
 module.exports = {
+  login: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (validateEmail(req.body.email)) {
+        const results = await userModel.findOne({
+          where: { email: email }
+        });
+
+        if (!results) {
+          res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
+            status: StatusEnum.CREDENTIS_NOT_MATCHED,
+            message: Messages.Credentials_Not_Matched,
+          });
+        } else {
+          if (results && results.type === "user") {
+            res.status(StatusEnum.NOT_FOUND).json({
+              status: StatusEnum.NOT_FOUND,
+              data: Messages.You_Are_Not_Admin,
+              message: Messages.You_Are_Not_Admin,
+            });
+          } else {
+            if (results.is_deleted == 1) {
+              res.status(StatusEnum.BLOCKED_USER).json({
+                status: StatusEnum.BLOCKED_USER,
+                message: Messages.Account_Blocked,
+              });
+            } else {
+              // if (!bcrypt.compareSync(password, results.password)) {
+              if (password != results.password) {
+                res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
+                  status: StatusEnum.CREDENTIS_NOT_MATCHED,
+                  message: Messages.Credentials_Not_Matched
+                });
+              } else {
+                await userModel.update({
+                  last_login: getCurrentTime()
+                }, {
+                  where: { user_id: results.user_id }
+                });
+
+                res.status(StatusEnum.SUCCESS).json({
+                  status: StatusEnum.SUCCESS,
+                  message: StatusMessages.SUCCESS,
+                  data: results
+                });
+              }
+            }
+          }
+        }
+      } else {
+        res.status(StatusEnum.PATTERN_NOT_MATCH).json({
+          status: StatusEnum.PATTERN_NOT_MATCH,
+          data: Messages.Invalid_Email,
+          message: StatusMessages.PATTERN_NOT_MATCH,
+        });
+        return;
+      }
+    } catch (error) {
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message,
+      });
+    }
+  },
   getAllUsers: async (req, res) => {
     try {
-      const { id, uid, page, firstName, lastName, email, mobile, spsv, icabbiStatus } = req.query;
+      const { id, uid, page, firstName, lastName, email, mobile, spsv, icabbiStatus, clicked_to_app } = req.query;
       let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
       let type = req.query.type || 'user';
       const sortField = req.query.sortField || "createdAt";
@@ -69,7 +133,7 @@ module.exports = {
             };
           }
 
-          if (firstName || lastName || email || mobile || uid) {
+          if (firstName || lastName || email || mobile || uid || spsv || clicked_to_app) {
             whereCondition[Sequelize.Op.and] = [];
             if (firstName) {
               whereCondition[Sequelize.Op.and].push({
@@ -103,6 +167,20 @@ module.exports = {
               whereCondition[Sequelize.Op.and].push({
                 user_id: {
                   [Sequelize.Op.eq]: `${uid}`
+                }
+              });
+            }
+            if (spsv) {
+              whereCondition[Sequelize.Op.and].push({
+                spsv: {
+                  [Sequelize.Op.eq]: `${spsv}`
+                }
+              });
+            }
+            if (clicked_to_app) {
+              whereCondition[Sequelize.Op.and].push({
+                clicked_to_app: {
+                  [Sequelize.Op.eq]: `${clicked_to_app}`
                 }
               });
             }
@@ -167,7 +245,7 @@ module.exports = {
     try {
       const { id, uid, page, firstName, lastName, email, mobile, spsv } = req.query;
       let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
-      let type = req.query.type || ['admin', 'superadmin'];
+      let type = req.query.type || ['admin', 'super_admin'];
       const sortField = req.query.sortField || "createdAt";
       const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
       const existUser = await userModel.findOne({
@@ -302,6 +380,403 @@ module.exports = {
             });
           } else {
             let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
+            const page = parseInt(req.query.page) || 1;
+            const pageSize = 10;
+
+            let whereCondition = {
+              device_type: device_type,
+              is_deleted: 0,
+              document_uploaded: 0,
+              agreement_verified: 0,
+              type: 'user'
+            }
+
+            if (firstName || lastName || email || mobile || spsv || icabbiStatus || uid) {
+              whereCondition[Sequelize.Op.and] = [];
+              if (firstName) {
+                whereCondition[Sequelize.Op.and].push({
+                  first_name: {
+                    [Sequelize.Op.like]: `%${firstName}%`
+                  }
+                });
+              }
+              if (lastName) {
+                whereCondition[Sequelize.Op.and].push({
+                  last_name: {
+                    [Sequelize.Op.like]: `%${lastName}%`
+                  }
+                });
+              }
+              if (email) {
+                whereCondition[Sequelize.Op.and].push({
+                  email: {
+                    [Sequelize.Op.like]: `%${email}%`
+                  }
+                });
+              }
+              if (mobile) {
+                whereCondition[Sequelize.Op.and].push({
+                  mobile_no: {
+                    [Sequelize.Op.like]: `%${mobile}%`
+                  }
+                });
+              }
+              if (icabbiStatus) {
+                whereCondition[Sequelize.Op.and].push({
+                  icabbiStatus: {
+                    [Sequelize.Op.like]: `%${icabbiStatus}%`
+                  }
+                });
+              }
+              if (uid) {
+                whereCondition[Sequelize.Op.and].push({
+                  user_id: uid
+                });
+              }
+              if (spsv) {
+                whereCondition[Sequelize.Op.and].push({
+                  spsv: spsv
+                });
+              }
+            }
+
+            const totalNumberOfUser = await userModel.count({ where: whereCondition });
+            const totalPages = Math.ceil(totalNumberOfUser / pageSize);
+            const offset = (page - 1) * pageSize;
+
+            let userData = await userModel.findAll({
+              where: whereCondition,
+              limit: pageSize,
+              offset: offset
+            });
+
+            userData = JSON.parse(JSON.stringify(userData));
+
+            userData.forEach(user => {
+              let status = "";
+              const isDocumentUploaded = user.document_uploaded;
+              const isAgreementVerified = user.agreement_verified;
+              if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
+                if (isDocumentUploaded && isAgreementVerified) {
+                  status = "Sign Up Complete";
+                } else if (!isDocumentUploaded) {
+                  status = "Pending Document Upload";
+                } else if (!isAgreementVerified) {
+                  status = "Pending Agreement";
+                }
+              } else {
+                console.warn("isDocumentUploaded or isAgreementVerified is not defined for user:", user);
+              }
+              user['status'] = status;
+            });
+
+            res.status(StatusEnum.SUCCESS).json({
+              message: StatusMessages.SUCCESS,
+              status: StatusEnum.SUCCESS,
+              data: userData,
+              page: page,
+              totalPages: totalPages,
+              totalCount: totalNumberOfUser
+            });
+          }
+        } else {
+          res.status(StatusEnum.SUCCESS).json({
+            status: StatusEnum.NOT_FOUND,
+            message: StatusMessages.NOT_FOUND,
+            data: "User not found.",
+          });
+        }
+      } else {
+        res.status(StatusEnum.NOT_FOUND).json({
+          status: StatusEnum.NOT_FOUND,
+          message: StatusMessages.You_Are_Not_Admin,
+          data: StatusMessages.You_Are_Not_Admin,
+        });
+      }
+    } catch (error) {
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message
+      });
+    }
+  },
+  updateAgreement: async (req, res) => {
+    try {
+      const { version, id, admin_id, title, content } = req.body;
+      const user_data = await userModel.findOne({
+        where: {
+          user_id: admin_id, [Sequelize.Op.or]: [
+            { type: 'admin' },
+            { type: 'super_admin' }
+          ], is_deleted: 0
+        }
+      });
+
+      if (user_data) {
+        const agreement_data = await agreementModel.findOne({
+          where: { agreement_id: id }
+        });
+        if (agreement_data) {
+          const updateAgreement = await agreementModel.update({
+            version: version,
+            title: title,
+            content: content
+          }, {
+            where: { agreement_id: id }
+          });
+          const agreement_data = await agreementModel.findOne({
+            where: { agreement_id: id },
+            attributes: ['title', 'version', 'content']
+          });
+          res.status(StatusEnum.SUCCESS).json({
+            status: StatusEnum.SUCCESS,
+            message: Messages.Agreement_Update_Success,
+            data: agreement_data
+          });
+        } else {
+          res.status(StatusEnum.Not_Found).json({
+            status: StatusEnum.Not_Found,
+            message: Messages.Agreement_Not_Found
+          });
+        }
+
+      } else {
+        res.status(StatusEnum.USER_NOT_FOUND).json({
+          status: StatusEnum.USER_NOT_FOUND,
+          message: Messages.You_Are_Not_Admin
+        });
+      }
+    } catch (error) {
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message
+      });
+    }
+  },
+  exportSearchedUser: async (req, res) => {
+    try {
+      const { id, uid, page, firstName, lastName, email, mobile, spsv, icabbiStatus, clicked_to_app } = req.query;
+      let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
+      let type = req.query.type || 'user';
+      const sortField = req.query.sortField || "createdAt";
+      const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
+      const existUser = await userModel.findOne({
+        where: { user_id: id }
+      });
+      if (existUser) {
+        if (existUser.type == "user") {
+          res.status(StatusEnum.NOT_FOUND).json({
+            status: StatusEnum.NOT_FOUND,
+            data: Messages.You_Are_Not_Admin,
+            message: StatusMessages.You_Are_Not_Admin,
+          });
+        } else {
+          if (typeof icabbiStatus == "undefined") {
+            whereCondition = {
+              device_type: device_type,
+              type: type,
+              is_deleted: 0
+            };
+          } else {
+            whereCondition = {
+              device_type: device_type,
+              type: type,
+              is_deleted: 0,
+              icabbiStatus: icabbiStatus
+            };
+          }
+
+          if (firstName || lastName || email || mobile || uid || spsv || clicked_to_app) {
+            whereCondition[Sequelize.Op.and] = [];
+            if (firstName) {
+              whereCondition[Sequelize.Op.and].push({
+                first_name: {
+                  [Sequelize.Op.like]: `%${firstName}%`
+                }
+              });
+            }
+            if (lastName) {
+              whereCondition[Sequelize.Op.and].push({
+                last_name: {
+                  [Sequelize.Op.like]: `%${lastName}%`
+                }
+              });
+            }
+            if (email) {
+              whereCondition[Sequelize.Op.and].push({
+                email: {
+                  [Sequelize.Op.like]: `%${email}%`
+                }
+              });
+            }
+            if (mobile) {
+              whereCondition[Sequelize.Op.and].push({
+                mobile_no: {
+                  [Sequelize.Op.like]: `%${mobile}%`
+                }
+              });
+            }
+            if (uid) {
+              whereCondition[Sequelize.Op.and].push({
+                user_id: {
+                  [Sequelize.Op.eq]: `${uid}`
+                }
+              });
+            }
+            if (spsv) {
+              whereCondition[Sequelize.Op.and].push({
+                spsv: {
+                  [Sequelize.Op.eq]: `${spsv}`
+                }
+              });
+            }
+            if (clicked_to_app) {
+              whereCondition[Sequelize.Op.and].push({
+                clicked_to_app: {
+                  [Sequelize.Op.eq]: `${clicked_to_app}`
+                }
+              });
+            }
+          }
+          const page = parseInt(req.query.page) || 1;
+          const pageSize = 10;
+          const offset = (page - 1) * pageSize;
+          let userData = await userModel.findAndCountAll({
+            where: whereCondition,
+            order: [[sortField, sortOrder]],
+            limit: pageSize,
+            offset: offset,
+          });
+          userData = JSON.parse(JSON.stringify(userData));
+          const updatedResults = await Promise.all(userData.rows.map(async (user) => {
+            let registrationComplete = "";
+            const isDocumentUploaded = user.document_uploaded;
+            const isAgreementVerified = user.agreement_verified;
+            if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
+              if (isDocumentUploaded && isAgreementVerified) {
+                registrationComplete = "Yes";
+              } else if (!isDocumentUploaded) {
+                registrationComplete = "No";
+              } else if (!isAgreementVerified) {
+                registrationComplete = "No";
+              }
+            } else {
+              console.warn(
+                "isDocumentUploaded or isAgreementVerified is not defined for user:",
+                user
+              );
+            }
+            let data = await userModel.findOne({
+              where: { user_id: user.user_id },
+              include: [{
+                as: 'attachment',
+                model: documentModel
+              }]
+            });
+            return data;
+          }));
+          const downloadFolderPath = path.join(__dirname, "../downloads");
+
+          const filePath = path.join(downloadFolderPath, "reports.csv");
+
+          // Ensure the 'downloads' folder exists
+          if (!fs.existsSync(downloadFolderPath)) {
+            fs.mkdirSync(downloadFolderPath);
+          }
+
+          const csvWriter = createCsvWriter({
+            path: filePath,
+            header: [
+              { id: "first_name", title: "First Name" },
+              { id: "last_name", title: "Last Name" },
+              { id: "mobile_no", title: "Mobile" },
+              { id: "email", title: "Email" },
+              { id: "spsv", title: "SPSV" },
+              { id: "device_type", title: "Device Type" },
+              { id: "createdAt", title: "Registration Timestamp" },
+              { id: "clicked_to_app", title: "Clicked To App" },
+              { id: "agreement_version", title: "Agreement Version" },
+              { id: "agreement_signed", title: "Date Signed" },
+              { id: "icabbiStatus", title: "iCabbi" },
+              { id: "registrationComplete", title: "Sign Up Complete (Yes/No)" },
+            ],
+          });
+
+          await csvWriter.writeRecords(userData.rows);
+
+          // Set headers for file download
+          res.setHeader("Content-Type", "text/csv");
+          res.setHeader(
+            "Content-Disposition",
+            "attachment; filename=reports.csv"
+          );
+
+          // Create a read stream from the file and pipe it to the response
+          const fileStream = fs.createReadStream(filePath);
+          fileStream.pipe(res);
+
+          // Optionally, you can delete the file after streaming it
+          fileStream.on("end", async () => {
+            // Optionally, you can delete the file after streaming it
+            //fs.unlinkSync(filePath);
+
+            // After streaming the file, make a GET request to the desired URL
+            // try {
+            //   await axios.get(
+            //     `https://driverapp.lynk.ie/apiv/downloads/reports.csv`
+            //   );
+            // } catch (error) {
+            //   console.error(
+            //     "Error making GET request to the other API",
+            //     error
+            //   );
+            // }
+          }
+          );
+
+          res.sendFile(filePath, (err) => {
+            if (err) {
+              console.error(err);
+              res.status(err.status).end();
+            } else {
+              //console.log(`File sent: ${filePath}`);
+            }
+          });
+          // fs.unlinkSync(filePath);
+          return;
+
+        }
+      } else {
+        res.status(StatusEnum.NOT_FOUND).json({
+          status: StatusEnum.NOT_FOUND,
+          data: "User not found.",
+          message: StatusMessages.NOT_FOUND,
+        });
+        return;
+      }
+    } catch (error) {
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message
+      });
+    }
+  },
+  exportSearchReports: async (req, res, next) => {
+    try {
+      const { id, uid, firstName, lastName, email, mobile, spsv, icabbiStatus } = req.query;
+      if (id) {
+        const userData = await userModel.findOne({
+          where: { user_id: id }
+        });
+        if (userData) {
+          if (userData.type === "user") {
+            res.status(StatusEnum.NOT_FOUND).json({
+              status: StatusEnum.NOT_FOUND,
+              data: Messages.You_Are_Not_Admin,
+              message: StatusMessages.You_Are_Not_Admin,
+            });
+          } else {
+            let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
             const sortField = req.query.sortField || "createdAt";
             const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
             const page = parseInt(req.query.page) || 1;
@@ -312,7 +787,8 @@ module.exports = {
               device_type: device_type,
               is_deleted: 0,
               document_uploaded: 0,
-              agreement_verified: 0
+              agreement_verified: 0,
+              type: 'user'
             }
 
             if (firstName || lastName || email || mobile || spsv || icabbiStatus || uid) {
@@ -359,6 +835,13 @@ module.exports = {
                   }
                 });
               }
+              if (spsv) {
+                whereCondition[Sequelize.Op.and].push({
+                  spsv: {
+                    [Sequelize.Op.eq]: `${spsv}`
+                  }
+                });
+              }
             }
             const totalNumberOfUser = await userModel.count({ where: whereCondition });
             const totalPages = Math.ceil(totalNumberOfUser / pageSize);
@@ -374,11 +857,11 @@ module.exports = {
               }]
             });
             userData = JSON.parse(JSON.stringify(userData));
-            const filteredResults = userData.rows.filter((user) => !(user.document_uploaded && user.agreement_verified));
+            const filteredResults = userData?.rows.filter((user) => !(user?.document_uploaded && user?.agreement_verified));
             filteredResults.forEach(user => {
               let status = "";
-              const isDocumentUploaded = user.document_uploaded;
-              const isAgreementVerified = user.agreement_verified;
+              const isDocumentUploaded = user?.document_uploaded;
+              const isAgreementVerified = user?.agreement_verified;
               if (isDocumentUploaded !== undefined && isAgreementVerified !== undefined) {
                 if (isDocumentUploaded && isAgreementVerified) {
                   status = "Sign Up Complete";
@@ -392,14 +875,78 @@ module.exports = {
               }
               user['status'] = status;
             });
+            const downloadFolderPath = path.join(__dirname, "../downloads");
+            // const randomString = Math.floor(1000 + Math.random() * 9000);
+            // const fileName = `drivers_${randomString}.csv`;
+            const filePath = path.join(downloadFolderPath, "reports.csv");
 
-            res.status(StatusEnum.SUCCESS).json({
-              message: StatusMessages.SUCCESS,
-              status: StatusEnum.SUCCESS,
-              data: userData.rows,
-              page: page,
-              totalPages: totalPages,
+            //console.log("downloadFolderPath", downloadFolderPath);
+            //console.log("filePath", filePath);
+
+            // Ensure the 'downloads' folder exists
+            if (!fs.existsSync(downloadFolderPath)) {
+              fs.mkdirSync(downloadFolderPath);
+            }
+
+            const csvWriter = createCsvWriter({
+              path: filePath,
+              header: [
+                { id: "first_name", title: "First Name" },
+                { id: "last_name", title: "Last Name" },
+                { id: "mobile_no", title: "Mobile" },
+                { id: "email", title: "Email" },
+                { id: "spsv", title: "SPSV" },
+                { id: "device_type", title: "Device Type" },
+                { id: "icabbiStatus", title: "iCabbi" },
+                { id: "status", title: "Progress" },
+              ],
             });
+
+            await csvWriter.writeRecords(filteredResults);
+
+            // Set headers for file download
+            res.setHeader("Content-Type", "text/csv");
+            res.setHeader(
+              "Content-Disposition",
+              "attachment; filename=reports.csv"
+            );
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+
+            // Optionally, you can delete the file after streaming it
+            fileStream.on("end", async () => {
+              // Optionally, you can delete the file after streaming it
+              //fs.unlinkSync(filePath);
+
+              // After streaming the file, make a GET request to the desired URL
+              // try {
+              //   await axios.get(
+              //     `https://driverapp.lynk.ie/apiv/downloads/reports.csv`
+              //   );
+              // } catch (error) {
+              //   console.error(
+              //     "Error making GET request to the other API",
+              //     error
+              //   );
+              // }
+            }
+            );
+
+            res.sendFile(filePath, (err) => {
+              if (err) {
+                console.error(err);
+                res.status(err.status).end();
+              } else {
+                //console.log(`File sent: ${filePath}`);
+              }
+            });
+            // res.status(StatusEnum.SUCCESS).json({
+            //   message: StatusMessages.SUCCESS,
+            //   status: StatusEnum.SUCCESS,
+            //   data: userData.rows,
+            //   page: page,
+            //   totalPages: totalPages,
+            // });
           }
         } else {
           res.status(StatusEnum.SUCCESS).json({
@@ -414,184 +961,6 @@ module.exports = {
           message: StatusMessages.You_Are_Not_Admin,
           data: StatusMessages.You_Are_Not_Admin,
         });
-      }
-    } catch (error) {
-      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
-        status: StatusEnum.INTERNAL_SERVER_ERROR,
-        message: error.message
-      });
-    }
-  },
-  updateAgreement: async (req, res) => {
-    try {
-      const { version, id, admin_id, title, content } = req.body;
-      const user_data = await userModel.findOne({
-        where: { user_id: admin_id, type: 'admin', is_deleted: 0 }
-      });
-
-      if (!user_data) {
-        res.status(StatusEnum.USER_NOT_FOUND).json({
-          status: StatusEnum.USER_NOT_FOUND,
-          message: Messages.You_Are_Not_Admin
-        });
-      } else {
-        const agreement_data = await agreementModel.findOne({
-          where: { agreement_id: id }
-        });
-        if (agreement_data) {
-          const updateAgreement = await agreementModel.update({
-            version: version,
-            title: title,
-            content: content
-          }, {
-            where: { agreement_id: id }
-          });
-          const agreement_data = await agreementModel.findOne({
-            where: { agreement_id: id },
-            attributes: ['title', 'version', 'content']
-          });
-          res.status(StatusEnum.SUCCESS).json({
-            status: StatusEnum.SUCCESS,
-            message: Messages.Agreement_Update_Success,
-            data: agreement_data
-          });
-        } else {
-          res.status(StatusEnum.Not_Found).json({
-            status: StatusEnum.Not_Found,
-            message: Messages.Agreement_Not_Found
-          });
-        }
-      }
-    } catch (error) {
-      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
-        status: StatusEnum.INTERNAL_SERVER_ERROR,
-        message: error.message
-      });
-    }
-  },
-  exportSearchedUser: async (req, res) => {
-    try {
-      const { id, uid, page, firstName, lastName, email, mobile, spsv, type } = req.query;
-      const sortField = req.query.sortField || "createdAt";
-      const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
-      const existUser = await userModel.findOne({
-        where: { user_id: id }
-      });
-      if (existUser) {
-        if (existUser.type == "user") {
-          res.status(StatusEnum.NOT_FOUND).json({
-            status: StatusEnum.NOT_FOUND,
-            data: Messages.You_Are_Not_Admin,
-            message: StatusMessages.You_Are_Not_Admin,
-          });
-        } else {
-          const page = parseInt(req.query.page) || 1;
-          const pageSize = 10;
-          const offset = (page - 1) * pageSize;
-          let userData = await userModel.findAndCountAll({
-            where: {
-              [Sequelize.Op.or]: [
-                {
-                  first_name: {
-                    [Sequelize.Op.like]: `%${firstName}%`
-                  }
-                },
-                {
-                  last_name: {
-                    [Sequelize.Op.like]: `%${lastName}%`
-                  }
-                },
-                {
-                  email: {
-                    [Sequelize.Op.like]: `%${email}%`
-                  }
-                },
-                {
-                  mobile_no: {
-                    [Sequelize.Op.like]: `%${mobile}%`
-                  }
-                },
-              ],
-
-            },
-            order: [[sortField, sortOrder]],
-            limit: pageSize,
-            offset: offset,
-          });
-          userData = JSON.parse(JSON.stringify(userData));
-          const downloadFolderPath = path.join(__dirname, "../downloads");
-
-          const filePath = path.join(downloadFolderPath, "reports.csv");
-
-          // Ensure the 'downloads' folder exists
-          if (!fs.existsSync(downloadFolderPath)) {
-            fs.mkdirSync(downloadFolderPath);
-          }
-
-          const csvWriter = createCsvWriter({
-            path: filePath,
-            header: [
-              { id: "first_name", title: "First Name" },
-              { id: "last_name", title: "Last Name" },
-              { id: "mobile_no", title: "Mobile" },
-              { id: "email", title: "Email" },
-              { id: "spsv", title: "SPSV" },
-              { id: "device_type", title: "Device Type" },
-              { id: "status", title: "Progress" },
-            ],
-          });
-
-          await csvWriter.writeRecords(userData.rows);
-
-          // Set headers for file download
-          res.setHeader("Content-Type", "text/csv");
-          res.setHeader(
-            "Content-Disposition",
-            "attachment; filename=reports.csv"
-          );
-
-          // Create a read stream from the file and pipe it to the response
-          const fileStream = fs.createReadStream(filePath);
-          fileStream.pipe(res);
-
-          // Optionally, you can delete the file after streaming it
-           fileStream.on("end", async () => {
-                // Optionally, you can delete the file after streaming it
-                //fs.unlinkSync(filePath);
-
-                // After streaming the file, make a GET request to the desired URL
-                // try {
-                //   await axios.get(
-                //     `https://driverapp.lynk.ie/apiv/downloads/reports.csv`
-                //   );
-                // } catch (error) {
-                //   console.error(
-                //     "Error making GET request to the other API",
-                //     error
-                //   );
-                // }
-              }
-          );
-
-          res.sendFile(filePath, (err) => {
-            if (err) {
-              console.error(err);
-              res.status(err.status).end();
-            } else {
-              //console.log(`File sent: ${filePath}`);
-            }
-          });
-         // fs.unlinkSync(filePath);
-          return;
-
-        }
-      } else {
-        res.status(StatusEnum.NOT_FOUND).json({
-          status: StatusEnum.NOT_FOUND,
-          data: "User not found.",
-          message: StatusMessages.NOT_FOUND,
-        });
-        return;
       }
     } catch (error) {
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
@@ -709,16 +1078,19 @@ module.exports = {
       const { id } = req.query;
       if (id) {
         //soft delete.
-        const deleteUser = await userModel.update({
-          is_deleted: 1
-        }, {
+        // const deleteUser = await userModel.update({
+        //   is_deleted: 1
+        // }, {
+        //   where: { user_id: id }
+        // });
+        const deleteDocument = await documentModel.destroy({
+          where: { user_id: id }
+        });
+        //hard delete
+        const deleteUser = await userModel.destroy({
           where: { user_id: id }
         });
 
-        //hard delete
-        // const deleteUser = await userModel.destroy({
-        //     where: { user_id: id }
-        // });
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           data: StatusMessages.USER_DELETE_SUCCESS,
@@ -990,7 +1362,7 @@ module.exports = {
       const userId = req.body.id;
       const email = req.body.email;
       let existUser = await userModel.findOne({
-        where: { email: email, is_deleted: 0 }
+        where: { user_id: userId, is_deleted: 0 }
       });
       existUser = JSON.parse(JSON.stringify(existUser));
       // const user = await Squery("SELECT * FROM users WHERE _id = ? LIMIT 1", [

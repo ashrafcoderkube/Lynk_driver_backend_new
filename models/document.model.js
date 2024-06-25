@@ -24,5 +24,4 @@ const document = con.define('document', {
     tableName: 'document',
     timestamps: true
 });
-
 module.exports = document;

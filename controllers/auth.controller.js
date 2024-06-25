@@ -43,12 +43,16 @@ module.exports = {
           if (!userData) {
             res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
               status: StatusEnum.CREDENTIS_NOT_MATCHED,
-              message: Messages.Credentials_Not_Matched,
+              message: Messages.Credentials_Not_Matched
             });
             return;
           } else {
-            if (!bcrypt.compareSync(password, userData.password)) {
-              res.status(StatusEnum.TOKEN_EXP).json({ message: 'Invalid username or password.' });
+            // if (!bcrypt.compareSync(password, userData.password)) {
+            if (password != userData.password) {
+              res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
+                status: StatusEnum.CREDENTIS_NOT_MATCHED,
+                message: Messages.Credentials_Not_Matched
+              });
             } else {
               // if (userData.type === "user") {
               const currenttime = getCurrentTime();
@@ -113,69 +117,68 @@ module.exports = {
       } else if (!type) {
         res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({ message: "Please provide type." })
       } else {
-        const existUser = await userModel.findOne({
-          where: {
-            [sequelize.Op.or]: {
-              email: email,
-              mobile_no: mobile_no
-            }, is_deleted: 0
-          }
-        });
-        if (existUser?.email == email) {
-          res.status(StatusEnum.ALREADY_EXIST).json({
-            status: StatusEnum.ALREADY_EXIST,
-            data: Messages.Email_Already_Registered,
-            message: StatusMessages.ALREADY_EXIST,
+        if (type == 'user') {
+          const existUser = await userModel.findOne({
+            where: {
+              [sequelize.Op.or]: {
+                email: email,
+                mobile_no: mobile_no
+              }, is_deleted: 0
+            }
           });
-        } else if (existUser?.mobile_no == mobile_no) {
-          res.status(StatusEnum.ALREADY_EXIST).json({
-            status: StatusEnum.ALREADY_EXIST,
-            data: Messages.Phone_Number_Registered,
-            message: StatusMessages.PHONENUMBER_ALREADY_EXIST,
-          });
-        } else {
-          if (validateEmail(email)) {
-            let Token = jwt.generateToken({ email: email, password: password }, jwt.secretKey());
-            const saltRounds = 10;
-            const salt = await bcrypt.genSalt(saltRounds);
-            const hashedPassword = await bcrypt.hash(password, salt);
-            // Insert new user into the users table
-            let new_user = await userModel.create({
-              email: email.toLowerCase(),
-              first_name: first_name,
-              last_name: last_name,
-              country_code: country_code ?? "",
-              device_type: device_type,
-              authToken: Token,
-              password: hashedPassword,
-              mobile_no: mobile_no ?? "",
-              spsv: spsv ?? "",
-              type: type,
-              profile_image: (req.file ? (BASEURL + req.file.path) : ""),
+          if (existUser?.email == email) {
+            res.status(StatusEnum.ALREADY_EXIST).json({
+              status: StatusEnum.ALREADY_EXIST,
+              data: Messages.Email_Already_Registered,
+              message: StatusMessages.ALREADY_EXIST,
             });
-            new_user = JSON.parse(JSON.stringify(new_user));
-            // Create default documents
-            const defaultDocs = [
-              {
-                document_name: "White Garda SPSV Licence",
-                document_url: "",
-                user_id: new_user.user_id
-              },
-              {
-                document_name: "SPSV Vehicle Licence",
-                document_url: "",
-                user_id: new_user.user_id
-              },
-              {
-                document_name: "Insurance Cert",
-                document_url: "",
-                user_id: new_user.user_id
-              },
-            ];
-            const createUserDocument = await documentModel.bulkCreate(defaultDocs);
-            const isForgotPassword = false;
-
-            if (type === "user") {
+          } else if (existUser?.mobile_no == mobile_no) {
+            res.status(StatusEnum.ALREADY_EXIST).json({
+              status: StatusEnum.ALREADY_EXIST,
+              data: Messages.Phone_Number_Registered,
+              message: StatusMessages.PHONENUMBER_ALREADY_EXIST,
+            });
+          } else {
+            if (validateEmail(email)) {
+              let Token = jwt.generateToken({ email: email, password: password }, jwt.secretKey());
+              // const saltRounds = 10;
+              // const salt = await bcrypt.genSalt(saltRounds);
+              // const hashedPassword = await bcrypt.hash(password, salt);
+              // Insert new user into the users table
+              let new_user = await userModel.create({
+                email: email.toLowerCase(),
+                first_name: first_name,
+                last_name: last_name,
+                country_code: country_code ?? "",
+                device_type: device_type,
+                authToken: Token,
+                password: password,
+                mobile_no: mobile_no ?? "",
+                spsv: spsv ?? "",
+                type: type,
+                profile_image: (req.file ? (BASEURL + req.file.path) : ""),
+              });
+              new_user = JSON.parse(JSON.stringify(new_user));
+              // Create default documents
+              const defaultDocs = [
+                {
+                  document_name: "White Garda SPSV Licence",
+                  document_url: "",
+                  user_id: new_user.user_id
+                },
+                {
+                  document_name: "SPSV Vehicle Licence",
+                  document_url: "",
+                  user_id: new_user.user_id
+                },
+                {
+                  document_name: "Insurance Cert",
+                  document_url: "",
+                  user_id: new_user.user_id
+                },
+              ];
+              const createUserDocument = await documentModel.bulkCreate(defaultDocs);
+              const isForgotPassword = false;
               const fullName = first_name + " " + last_name;
               const title = "Profile Image Uploaded";
               const subTitle1 = "We received a new doc from this driver: " + fullName;
@@ -186,7 +189,59 @@ module.exports = {
               setTimeout(() => {
                 checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
               }, 15 * 60 * 1000);
+              let data = await userModel.findOne({
+                where: { user_id: new_user.user_id },
+                include: [{
+                  as: 'attachment',
+                  model: documentModel
+                }]
+              });
+              res.status(StatusEnum.SUCCESS).json({
+                status: StatusEnum.SUCCESS,
+                message: StatusMessages.REGISTER_SUCCESS,
+                data: JSON.parse(JSON.stringify(data)),
+              });
             } else {
+              res.status(StatusEnum.PATTERN_NOT_MATCH).json({
+                status: StatusEnum.PATTERN_NOT_MATCH,
+                message: StatusMessages.PATTERN_NOT_MATCH,
+                data: Messages.Invalid_Email,
+              });
+            }
+          }
+        } else {
+          const existUser = await userModel.findOne({
+            where: { email: email, is_deleted: 0 }
+          });
+          if (existUser?.email == email) {
+            res.status(StatusEnum.ALREADY_EXIST).json({
+              status: StatusEnum.ALREADY_EXIST,
+              data: Messages.Email_Already_Registered,
+              message: StatusMessages.ALREADY_EXIST,
+            });
+          } else {
+            if (validateEmail(email)) {
+              let Token = jwt.generateToken({ email: email, password: password }, jwt.secretKey());
+              // const saltRounds = 10;
+              // const salt = await bcrypt.genSalt(saltRounds);
+              // const hashedPassword = await bcrypt.hash(password, salt);
+              // Insert new user into the users table
+              let new_user = await userModel.create({
+                email: email.toLowerCase(),
+                first_name: first_name,
+                last_name: last_name,
+                country_code: country_code ?? "",
+                device_type: device_type,
+                authToken: Token,
+                password: password,
+                mobile_no: mobile_no ?? "",
+                spsv: spsv ?? "",
+                type: type,
+                profile_image: (req.file ? (BASEURL + req.file.path) : ""),
+              });
+              new_user = JSON.parse(JSON.stringify(new_user));
+              const isForgotPassword = false;
+
               const fullName = first_name + last_name;
               const title = "New Account Registered";
               const role = type;
@@ -195,26 +250,23 @@ module.exports = {
               const redirectUrl = "https://driverapp.lynk.ie/login";
               const isAdminRegister = false;
               sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
-            }
 
-            let data = await userModel.findOne({
-              where: { user_id: new_user.user_id },
-              include: [{
-                as: 'attachment',
-                model: documentModel
-              }]
-            });
-            res.status(StatusEnum.SUCCESS).json({
-              status: StatusEnum.SUCCESS,
-              message: StatusMessages.REGISTER_SUCCESS,
-              data: JSON.parse(JSON.stringify(data)),
-            });
-          } else {
-            res.status(StatusEnum.PATTERN_NOT_MATCH).json({
-              status: StatusEnum.PATTERN_NOT_MATCH,
-              message: StatusMessages.PATTERN_NOT_MATCH,
-              data: Messages.Invalid_Email,
-            });
+
+              let data = await userModel.findOne({
+                where: { user_id: new_user.user_id }
+              });
+              res.status(StatusEnum.SUCCESS).json({
+                status: StatusEnum.SUCCESS,
+                message: StatusMessages.REGISTER_SUCCESS,
+                data: JSON.parse(JSON.stringify(data)),
+              });
+            } else {
+              res.status(StatusEnum.PATTERN_NOT_MATCH).json({
+                status: StatusEnum.PATTERN_NOT_MATCH,
+                message: StatusMessages.PATTERN_NOT_MATCH,
+                data: Messages.Invalid_Email,
+              });
+            }
           }
         }
       }

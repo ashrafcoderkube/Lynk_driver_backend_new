@@ -1,24 +1,23 @@
-// controllers/webhookController.js
-
 const axios = require('axios');
 const userModel = require('../models/user.model');
 
 // Function to handle incoming webhook requests
 module.exports = {
     handleWebhook: async (req, res) => {
-        const { to, from, message, contact, dtMessageId, dtLastMessageId } = req.body;
+        const { to, from, message, contact, dtMessageId, messageId, dtPairedMessageId, dtLastMessageId } = req.body;
         try {
-            if (!message.text) {
+            if (!message?.text) {
                 return res.status(400).send({ error: 'Response is required' });
             }
-            const data = await userModel.findOne({
+
+            let data = await userModel.findOne({
                 where: { message_id: dtLastMessageId },
-                attributes: ['template_id', 'message', 'user_id', 'first_name', 'last_name']
+                attributes: ['template_id', 'message', 'user_id', 'first_name', 'last_name', 'device_type']
             });
             let reply;
             switch (data?.template_id) {
                 case 0:
-                    if (message.text.toLowerCase() === "i'm not ready yet") {
+                    if (message?.text.toLowerCase() === "i'm not ready yet") {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
@@ -41,16 +40,16 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messages[0].messageId
+                            message: message?.text,
+                            message_id: response.data?.messages[0].messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        if (response.data.messages[0].status !== 'SENT') {
+                        if (response.data?.messages[0].status !== 'SENT') {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
-                    } else if (message.text.toLowerCase() === 'yes' && data.message.toLowerCase() === "i'm not ready yet") {
+                    } else if (message?.text.toLowerCase() === 'yes' && data?.message.toLowerCase() === "i'm not ready yet") {
                         reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -65,8 +64,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: "final " + message.text,
-                            message_id: response.data.messageId
+                            message: "final " + message?.text,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -76,8 +75,8 @@ module.exports = {
                         } else {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
-                    } else if (message.text.toLowerCase() === 'no' && data.message.toLowerCase() === "i'm not ready yet") {
-                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
+                    } else if (message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === "i'm not ready yet") {
+                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -91,8 +90,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: "final " + message.text,
-                            message_id: response.data.messageId
+                            message: "final " + message?.text,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -103,10 +102,37 @@ module.exports = {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
                     } else {
+                        // if (isWithinBusinessHours()) {
+                        //     reply = "Thanks! We’ll get back to you shortly";
+                        // } else {
+                        //     reply = "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+                        // }
+                        // if (isWithinBusinessHours()) {
+                        //     reply = data?.message === "Thanks! We’ll get back to you shortly"
+                        //         ? `We have your message ${data.first_name} ${data.last_name}. Please bear with us and we'll get back to you shortly.`
+                        //         : "Thanks! We’ll get back to you shortly";
+                        // } else {
+                        //     reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
+                        //         ? `We have your message ${data.first_name} ${data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                        //         : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+                        // }
                         if (isWithinBusinessHours()) {
-                            reply = "Thanks! We’ll get back to you shortly";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            } else {
+                                reply = data?.message === "Thanks! We’ll get back to you shortly"
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    : "Thanks! We’ll get back to you shortly";
+                            }
                         } else {
-                            reply = "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            } else {
+                                reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+
+                            }
                         }
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -120,12 +146,27 @@ module.exports = {
                                 'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
                             },
                         });
+                        // if (reply == "Thanks! We’ll get back to you shortly" || reply == "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.") {
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messageId
+                            message: reply,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
+                        // } else {
+                        //     await userModel.update({
+                        //         message: message?.text,
+                        //         message_id: response.data?.messageId
+                        //     }, {
+                        //         where: { user_id: data.user_id }
+                        //     });
+                        // }
+                        // await userModel.update({
+                        //     message: reply,
+                        //     message_id: response.data?.messageId
+                        // }, {
+                        //     where: { user_id: data.user_id }
+                        // });
                         // Check if the message was sent successfully
                         if (response.data.status === 'SENT') {
                             res.status(200).send({ success: 'Message sent successfully.' });
@@ -135,7 +176,7 @@ module.exports = {
                     }
                     break;
                 case 1:
-                    if (message.text.toLowerCase() == 'yes' && data.message.toLowerCase() == 'no' && data.template_id == 1) {
+                    if (message?.text.toLowerCase() == 'yes' && data?.message.toLowerCase() == 'no' && data?.template_id == 1) {
                         reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -150,8 +191,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: "final " + message.text,
-                            message_id: response.data.messageId
+                            message: "final " + message?.text,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -161,7 +202,7 @@ module.exports = {
                         } else {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
-                    } else if (message.text.toLowerCase() === 'yes') {
+                    } else if (message?.text.toLowerCase() === 'yes') {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
@@ -184,16 +225,16 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messages[0].messageId
+                            message: message?.text,
+                            message_id: response.data?.messages[0].messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        if (response.data.messages[0].status !== 'SENT') {
+                        if (response.data?.messages[0].status !== 'SENT') {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
-                    } else if (message.text.toLowerCase() === 'no' && data.message.toLowerCase() === 'no') {
+                    } else if (message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === 'no') {
                         reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -208,8 +249,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messageId
+                            message: message?.text,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -219,7 +260,7 @@ module.exports = {
                         } else {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
-                    } else if (message.text.toLowerCase() === 'no') {
+                    } else if (message?.text.toLowerCase() === 'no') {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
@@ -242,20 +283,33 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messages[0].messageId
+                            message: message?.text,
+                            message_id: response.data?.messages[0].messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        if (response.data.messages[0].status !== 'SENT') {
+                        if (response.data?.messages[0].status !== 'SENT') {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else {
                         if (isWithinBusinessHours()) {
-                            reply = "Thanks! We’ll get back to you shortly";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            } else {
+                                reply = data?.message === "Thanks! We’ll get back to you shortly"
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    : "Thanks! We’ll get back to you shortly";
+                            }
                         } else {
-                            reply = "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            } else {
+                                reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+
+                            }
                         }
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -270,8 +324,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messageId
+                            message: reply,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -284,7 +338,8 @@ module.exports = {
                     }
                     break;
                 case 2:
-                    if (message.text.toLowerCase() == 'yes' && data.message.toLowerCase() == 'no' && data.template_id == 2) {
+                    let templateName = data?.device_type == 'Android' ? 'icabbi_template_for_android' : 'icabbi_template_for_ios'
+                    if (message?.text.toLowerCase() == 'yes' && data?.message.toLowerCase() == 'no' && data?.template_id == 2) {
                         reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -299,8 +354,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: "final " + message.text,
-                            message_id: response.data.messageId
+                            message: "final " + message?.text,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -310,13 +365,13 @@ module.exports = {
                         } else {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
-                    } else if (message.text.toLowerCase() === 'yes') {
+                    } else if (message?.text.toLowerCase() === 'yes') {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
                                     to: from,
                                     content: {
-                                        templateName: 'icabbi_template_for_yes',
+                                        templateName: templateName,
                                         language: 'en',
                                         templateData: {
                                             body: {
@@ -333,16 +388,17 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messages[0].messageId
+                            message: message?.text,
+                            message_id: response.data?.messages[0].messageId,
+                            clicked_to_app: 'YES'
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        if (response.data.messages[0].status !== 'SENT') {
+                        if (response.data?.messages[0].status !== 'SENT') {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
-                    } else if ((message.text.toLowerCase() === 'no' && data.message.toLowerCase() === 'no') || message.text.toLowerCase() == "already have iCabbi app") {
+                    } else if ((message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === 'no') || message?.text.toLowerCase() == "already have icabbi app") {
                         reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -356,10 +412,20 @@ module.exports = {
                                 'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
                             },
                         });
-                        await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messageId
-                        }, {
+                        let dynamicData = {};
+                        if (message?.text.toLowerCase() === "already have icabbi app") {
+                            dynamicData = {
+                                message: message?.text,
+                                message_id: response.data?.messageId,
+                                clicked_to_app: 'YES'
+                            };
+                        } else {
+                            dynamicData = {
+                                message: message?.text,
+                                message_id: response.data?.messageId
+                            };
+                        }
+                        await userModel.update(dynamicData, {
                             where: { user_id: data.user_id }
                         });
                         // Check if the message was sent successfully
@@ -368,7 +434,7 @@ module.exports = {
                         } else {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
-                    } else if (message.text.toLowerCase() === 'no') {
+                    } else if (message?.text.toLowerCase() === 'no') {
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
                             messages: [
                                 {
@@ -391,20 +457,33 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messages[0].messageId
+                            message: message?.text,
+                            message_id: response.data?.messages[0].messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        if (response.data.messages[0].status !== 'SENT') {
+                        if (response.data?.messages[0].status !== 'SENT') {
                             return res.status(500).send({ error: 'Failed to send template message.' });
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else {
                         if (isWithinBusinessHours()) {
-                            reply = "Thanks! We’ll get back to you shortly";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            } else {
+                                reply = data?.message === "Thanks! We’ll get back to you shortly"
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    : "Thanks! We’ll get back to you shortly";
+                            }
                         } else {
-                            reply = "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            } else {
+                                reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
+                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
+
+                            }
                         }
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
@@ -419,8 +498,8 @@ module.exports = {
                             },
                         });
                         await userModel.update({
-                            message: message.text,
-                            message_id: response.data.messageId
+                            message: reply,
+                            message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
@@ -435,26 +514,6 @@ module.exports = {
                 default:
                     break;
             }
-            // // Sending the message to the double tick API
-            // const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
-            //     "content": {
-            //         "text": reply
-            //     },
-            //     "from": from,
-            //     "to": to
-
-            // }, {
-            //     headers: {
-            //         'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
-            //     },
-            // });
-
-            // // Check if the message was sent successfully
-            // if (response.data.status === 'SENT') {
-            //     res.status(200).send({ success: 'Message sent successfully.' });
-            // } else {
-            //     res.status(500).send({ error: 'Failed to send message.' });
-            // }
         } catch (error) {
             console.error('Error sending message:', error);
             res.status(500).send({ error: error.message });
@@ -464,9 +523,8 @@ module.exports = {
 function isWithinBusinessHours() {
     const now = new Date();
     const dayOfWeek = now.getDay();
-    const hour = now.getHours() + 1; //+1 to the UTC time as per the Ireland timezone.
+    const hour = now.getHours();
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
     const isWithinHours = hour >= 9 && hour < 16;
-
     return isWeekday && isWithinHours;
 }

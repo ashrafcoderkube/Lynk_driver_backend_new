@@ -212,7 +212,7 @@ function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EM
   });
 }
 
-function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie"]) {
+function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie","sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
       host: 'localhost',
@@ -456,7 +456,8 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       });
       await userModel.update({
         template_id: 0,
-        message_id: response.data.messages[0].messageId
+        message_id: response.data.messages[0].messageId,
+        message: 'first message from the template'
       }, {
         where: { user_id: user_id }
       });
@@ -485,7 +486,8 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       });
       await userModel.update({
         template_id: template_id,
-        message_id: response.data.messages[0].messageId
+        message_id: response.data.messages[0].messageId,
+        message: 'first message from the template'
       }, {
         where: { user_id: user_id }
       });
