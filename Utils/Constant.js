@@ -41,7 +41,7 @@ const social_type = {
   Facebook: 1,
   Apple: 2
 }
-const BASEURL = "https://driverapp.lynk.ie/apiv/";
+const BASEURL = "https://driverapp.lynk.ie/api/";
 // const BASEURL = "http://34.246.223.252/";
 // const BASEURL = "https://lynk-driver.onrender.com/";
 const StatusMessages = {

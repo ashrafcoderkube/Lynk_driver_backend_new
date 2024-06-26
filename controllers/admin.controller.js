@@ -849,7 +849,7 @@ module.exports = {
               }
             }
             const totalNumberOfUser = await userModel.count({ where: whereCondition });
-            const totalPages = Math.ceil(totalNumberOfUser / pageSize);
+            // const totalPages = Math.ceil(totalNumberOfUser / pageSize);
             let userData = await userModel.findAndCountAll({
               where: whereCondition,
               order: [[sortField, sortOrder]],
