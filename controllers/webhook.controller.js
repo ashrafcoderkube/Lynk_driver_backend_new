@@ -50,7 +50,7 @@ module.exports = {
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else if (message?.text.toLowerCase() === 'yes' && data?.message.toLowerCase() === "i'm not ready yet") {
-                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -76,7 +76,7 @@ module.exports = {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
                     } else if (message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === "i'm not ready yet") {
-                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
+                        reply = `Sounds good ${data.first_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving! 🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -117,19 +117,19 @@ module.exports = {
                         //         : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
                         // }
                         if (isWithinBusinessHours()) {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            if (data?.message == `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                             } else {
                                 reply = data?.message === "Thanks! We’ll get back to you shortly"
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    ? `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                                     : "Thanks! We’ll get back to you shortly";
                             }
                         } else {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            if (data?.message == `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
                             } else {
                                 reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    ? `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
                                     : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
 
                             }
@@ -177,7 +177,7 @@ module.exports = {
                     break;
                 case 1:
                     if (message?.text.toLowerCase() == 'yes' && data?.message.toLowerCase() == 'no' && data?.template_id == 1) {
-                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -212,7 +212,7 @@ module.exports = {
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [data.first_name + " " + data.last_name]
+                                                "placeholders": [data.first_name]
                                             },
                                         },
                                         from: to
@@ -235,7 +235,7 @@ module.exports = {
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else if (message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === 'no') {
-                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
+                        reply = `Sounds good ${data.first_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -270,7 +270,7 @@ module.exports = {
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [data.first_name + " " + data.last_name]
+                                                "placeholders": [data.first_name]
                                             },
                                         },
                                         from: to
@@ -294,19 +294,19 @@ module.exports = {
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else {
                         if (isWithinBusinessHours()) {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            if (data?.message == `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                             } else {
                                 reply = data?.message === "Thanks! We’ll get back to you shortly"
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    ? `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                                     : "Thanks! We’ll get back to you shortly";
                             }
                         } else {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            if (data?.message == `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
                             } else {
                                 reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    ? `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
                                     : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
 
                             }
@@ -340,7 +340,7 @@ module.exports = {
                 case 2:
                     let templateName = data?.device_type == 'Android' ? 'icabbi_template_for_android' : 'icabbi_template_for_ios'
                     if (message?.text.toLowerCase() == 'yes' && data?.message.toLowerCase() == 'no' && data?.template_id == 2) {
-                        reply = `Sure ${data.first_name + " " + data.last_name}! What can we assist with?`;
+                        reply = `Sure ${data.first_name}! What can we assist with?`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -375,7 +375,7 @@ module.exports = {
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [data.first_name + " " + data.last_name]
+                                                "placeholders": [data.first_name]
                                             },
                                         },
                                         from: to
@@ -399,7 +399,7 @@ module.exports = {
                         }
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else if ((message?.text.toLowerCase() === 'no' && data?.message.toLowerCase() === 'no') || message?.text.toLowerCase() == "already have icabbi app") {
-                        reply = `Sounds good ${data.first_name + " " + data.last_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
+                        reply = `Sounds good ${data.first_name}! Just give us a shout if you need anything down the road. We're always here to help. Happy driving!🚗😊`;
                         const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
                             "content": {
                                 "text": reply
@@ -444,7 +444,7 @@ module.exports = {
                                         language: 'en',
                                         templateData: {
                                             body: {
-                                                "placeholders": [data.first_name + " " + data.last_name]
+                                                "placeholders": [data.first_name]
                                             },
                                         },
                                         from: to
@@ -468,19 +468,19 @@ module.exports = {
                         res.status(200).send({ success: 'Message sent successfully.' });
                     } else {
                         if (isWithinBusinessHours()) {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                            if (data?.message == `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`) {
+                                reply = `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                             } else {
                                 reply = data?.message === "Thanks! We’ll get back to you shortly"
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Please bear with us and we'll get back to you shortly.`
+                                    ? `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
                                     : "Thanks! We’ll get back to you shortly";
                             }
                         } else {
-                            if (data?.message == `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
-                                reply = `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
+                            if (data?.message == `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`) {
+                                reply = `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`;
                             } else {
                                 reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
-                                    ? `We have your message ${data.first_name + " " + data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
+                                    ? `We have your message ${data.first_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
                                     : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
 
                             }

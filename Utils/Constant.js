@@ -372,7 +372,7 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
     if (user) {
       const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
       if (pendingDocuments.length > 0) {
-        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, pendingDocuments, user.user_id, 'first_template_missing_document');
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, pendingDocuments, user.user_id, 'first_template_missing_document');
         return data;
       }
       // });
@@ -393,7 +393,7 @@ async function checkAgreementsAndSendWhatsAppMessage(user_id) {
     user = JSON.parse(JSON.stringify(user));
     if (user) {
       if (user.agreement_verified == false) {
-        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, "", user.user_id, 'second_template_missing_driver_agreement');
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'second_template_missing_driver_agreement');
         return data;
       }
     } else {
@@ -413,7 +413,7 @@ async function checkiCabbiAndSendWhatsAppMessage(user_id) {
     user = JSON.parse(JSON.stringify(user));
     if (user) {
       if (user.clicked_to_app == 'No') {
-        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name + " " + user.last_name, "", user.user_id, 'third_template_missing_icabbi_driver_app_v2');
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'third_template_missing_icabbi_driver_app_v2');
         return data;
       }
     } else {

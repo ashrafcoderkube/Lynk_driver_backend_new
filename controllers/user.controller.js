@@ -542,6 +542,21 @@ module.exports = {
               isAdminRegister
             );
           }
+          const fullName = data.first_name + " " + data.last_name;
+          const subject = `Driver ${data.user_id} ${fullName} Profile Updated`;
+          const userSPSV = data.spsv;
+          const userPhone = data.mobile_no;
+          const userEmail = data.email;
+          const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
+          await sendMailForProfileUpdate(
+            subject,
+            data.user_id,
+            fullName,
+            userEmail,
+            userSPSV,
+            userPhone,
+            dynamicLink
+          );
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.PROFILE_UPDATE_SUCCESS,
