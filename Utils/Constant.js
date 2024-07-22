@@ -426,7 +426,7 @@ async function checkiCabbiAndSendWhatsAppMessage(user_id) {
 async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocuments, user_id, templateName) {
   try {
     const templateMap = new Map([
-      ["first_template_missing_document", 0],
+      ["first_template_missing_document_updated", 0],
       ["second_template_missing_driver_agreement", 1],
       ["third_template_missing_icabbi_driver_app_v2", 2]
     ]);
