@@ -6,6 +6,7 @@ const {
   Messages,
   sendMail,
   getCurrentTime,
+  sendMailForProfileRegister,
   checkDocumentsAndSendWhatsAppMessage
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
@@ -196,6 +197,20 @@ module.exports = {
                   model: documentModel
                 }]
               });
+              const subject = `Driver ${data.user_id} ${fullName} Registered`;
+              const userSPSV = data.spsv;
+              const userPhone = data.mobile_no;
+              const userEmail = data.email;
+              const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
+              await sendMailForProfileRegister(
+                subject,
+                data.user_id,
+                fullName,
+                userEmail,
+                userSPSV,
+                userPhone,
+                dynamicLink
+              );
               res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,
                 message: StatusMessages.REGISTER_SUCCESS,

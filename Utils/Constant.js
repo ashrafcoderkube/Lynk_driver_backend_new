@@ -12,6 +12,7 @@ const ibanhtml = path.join(__dirname, '../Utils/iban.html');
 const deletionhtml = path.join(__dirname, '../Utils/Deletion.html');
 const holidayhtml = path.join(__dirname, '../Utils/Holiday.html');
 const profileUpdatehtml = path.join(__dirname, '../Utils/Profile-updated.html');
+const profileRegisterhtml = path.join(__dirname, '../Utils/profile-information.html');
 
 const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
@@ -20,6 +21,8 @@ const htmlIBAN = fs.readFileSync(ibanhtml, "utf8");
 const htmlHoliday = fs.readFileSync(holidayhtml, "utf8");
 const htmlProfileUpdate = fs.readFileSync(profileUpdatehtml, "utf8");
 const htmlDeletion = fs.readFileSync(deletionhtml, "utf8");
+const htmlProfileRegister = fs.readFileSync(profileRegisterhtml, "utf-8");
+
 const admin = require("firebase-admin");
 
 
@@ -324,6 +327,43 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
   });
 }
 
+function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie", "sagarpaneliya.coderkube@gmail.com"]) {
+
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const MailForProfileRegister = htmlProfileRegister.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK);
+
+    console.log("from::-", FROMEMAIL)
+    console.log("to::-", RECEIVEREMAIL)
+    // console.log("to::- arfaz.coderkuber@gmail.com")
+    console.log("Driver Name:-", DRIVER_NAME)
+    console.log("REDIRECT_LINK:-", REDIRECT_LINK)
+
+    const mail_configs = {
+      from: FROMEMAIL,
+      to: RECEIVEREMAIL,
+      // to: "arfaz.coderkuber@gmail.com",
+      subject: SUBJECT,
+      html: MailForProfileRegister,
+    };
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ message: 'Email send successfully' });
+    });
+  });
+}
 
 // Function to generate dynamic link
 const generateDynamicLink = async (userId) => {
@@ -514,6 +554,7 @@ module.exports = {
   sendDoubletickWhatsAppMessage,
   checkDocumentsAndSendWhatsAppMessage,
   checkAgreementsAndSendWhatsAppMessage,
-  checkiCabbiAndSendWhatsAppMessage
+  checkiCabbiAndSendWhatsAppMessage,
+  sendMailForProfileRegister
 }
 
