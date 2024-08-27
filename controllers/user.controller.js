@@ -90,7 +90,8 @@ module.exports = {
           title: "Lynk Procedures",
           description:
             "Simple Guidelines and Rules to follow so our customers get the best service possible. Please read to make sure you understand our procedures.",
-          link: "https://www.lynk.ie/wp-content/uploads/2023/11/Driver-Procedures-24.pdf",
+          // link: "https://www.lynk.ie/wp-content/uploads/2023/11/Driver-Procedures-24.pdf",
+          link: "https://www.lynk.ie/wp-content/uploads/2024/08/Driver-Procedures-24.pdf",
         },
         faqs: {
           icon: "https://drive.google.com/file/d/1pLlKbLhhAQJ79BNlvmVML25HMSlRC4B4/view?usp=sharing",
