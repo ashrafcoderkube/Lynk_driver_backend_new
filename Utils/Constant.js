@@ -215,7 +215,7 @@ function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EM
   });
 }
 
-function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie","sandra.cole@lynk.ie"]) {
+function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
       host: 'localhost',
@@ -395,6 +395,69 @@ const getCurrentTime = () => {
   const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
   return currentTime.toLocaleString('en-US', options);
 };
+async function InitialReminder(user_id) {
+  try {
+    let user_data = await userModel.findOne({
+      where: { user_id: user_id }
+    });
+    user_data = JSON.parse(JSON.stringify(user_data));
+    if (user_data) {
+      const data = await sendDoubletickWhatsAppMessage(
+        user_data.country_code + user_data.mobile_no,
+        user_data.first_name,
+        "",
+        user_data.user_id,
+        'reminder_24_hours'
+      );
+      return data;
+    } else
+      return false;
+  } catch (error) {
+    return error.message;
+  }
+}
+async function SecondReminder(user_id) {
+  try {
+    let user_data = await userModel.findOne({
+      where: { user_id: user_id }
+    });
+    user_data = JSON.parse(JSON.stringify(user_data));
+    if (user_data) {
+      const data = await sendDoubletickWhatsAppMessage(
+        user_data.country_code + user_data.mobile_no,
+        user_data.first_name,
+        "",
+        user_data.user_id,
+        'reminder_72_hours'
+      );
+      return data;
+    } else
+      return false;
+  } catch (error) {
+    return error.message;
+  }
+}
+async function FinalReminder(user_id) {
+  try {
+    let user_data = await userModel.findOne({
+      where: { user_id: user_id }
+    });
+    user_data = JSON.parse(JSON.stringify(user_data));
+    if (user_data) {
+      const data = await sendDoubletickWhatsAppMessage(
+        user_data.country_code + user_data.mobile_no,
+        user_data.first_name,
+        "",
+        user_data.user_id,
+        'reminder_7_days'
+      );
+      return data;
+    } else
+      return false;
+  } catch (error) {
+    return error.message;
+  }
+}
 async function checkDocumentsAndSendWhatsAppMessage(user_id) {
   try {
     let user = await userModel.findOne({
@@ -468,7 +531,10 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
     const templateMap = new Map([
       ["first_template_missing_document_updated", 0],
       ["second_template_missing_driver_agreement", 1],
-      ["third_template_missing_icabbi_driver_app_v2", 2]
+      ["third_template_missing_icabbi_driver_app_v2", 2],
+      ["reminder_24_hours", 4],
+      ['reminder_72_hours', 5],
+      ['reminder_7_days', 6]
     ]);
     const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
     if (pendingDocuments != "") {
@@ -524,13 +590,47 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
           'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
         },
       });
-      await userModel.update({
-        template_id: template_id,
-        message_id: response.data.messages[0].messageId,
-        message: 'first message from the template'
-      }, {
-        where: { user_id: user_id }
-      });
+      switch (template_id) {
+        case 0, 1, 2:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'first message from the template'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 4:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: '24 hours reminder'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 5:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: '72 hours reminder'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 6:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: '7 days reminder'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        default:
+          break;
+      }
+
       return response.data;
     }
   } catch (error) {
@@ -551,6 +651,9 @@ module.exports = {
   sendMailForHoliday,
   sendMailForProfileUpdate,
   getCurrentTime,
+  InitialReminder,
+  SecondReminder,
+  FinalReminder,
   sendDoubletickWhatsAppMessage,
   checkDocumentsAndSendWhatsAppMessage,
   checkAgreementsAndSendWhatsAppMessage,
