@@ -590,8 +590,28 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
           'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
         },
       });
+      const msg_id = response.data.messages[0].messageId
+      console.log("MESSAGE ID===============", msg_id);
       switch (template_id) {
-        case 0, 1, 2:
+        case 0:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'first message from the template'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 1:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'first message from the template'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 2:
           await userModel.update({
             template_id: template_id,
             message_id: response.data.messages[0].messageId,
