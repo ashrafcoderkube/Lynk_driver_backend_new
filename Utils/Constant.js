@@ -327,7 +327,7 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
   });
 }
 
-function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie", "sagarpaneliya.coderkube@gmail.com"]) {
+function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
