@@ -193,54 +193,31 @@ module.exports = {
               setTimeout(() => {
                 checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
               }, 15 * 60 * 1000);
+
+
               // First reminder after 24 hours
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data.icabbiStatus !== 1) {
-                  await InitialReminder(new_user.user_id);
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                  await InitialReminder(user_data.user_id);
                 }
               }, 24 * 60 * 60 * 1000); // 24 hours
-
 
               // Reminder after 72 hours (3 days after the 24-hour message)
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data.icabbiStatus !== 1) {
-                  await SecondReminder(new_user.user_id); // 72-hour reminder
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                  await SecondReminder(user_data.user_id); // 72-hour reminder
                 }
               }, (24 + 72) * 60 * 60 * 1000); // 72 hours after 24-hour reminder
 
               // Reminder 7 days after the 24-hour message
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data.icabbiStatus !== 1) {
-                  await FinalReminder(new_user.user_id); // 7-day reminder
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                  await FinalReminder(user_data.user_id); // 7-day reminder
                 }
               }, (24 * 60 * 60 * 1000) + (7 * 24 * 60 * 60 * 1000)); // 7 days after 24-hour reminder
-
-              // First reminder after 1 hour of registration
-              // setTimeout(async () => {
-              //   let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-              //   if (user_data.icabbiStatus !== 1) {
-              //     await InitialReminder(new_user.user_id); // Send first reminder (1-hour reminder)
-
-              //     // Second reminder after 2 hours from the first message (i.e. 3 hours from registration)
-              //     setTimeout(async () => {
-              //       let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-              //       if (user_data.icabbiStatus !== 1) {
-              //         await SecondReminder(new_user.user_id); // Send second reminder
-              //       }
-              //     }, 2 * 60 * 60 * 1000); // 2 hours after the first message
-
-              //     // Third reminder after 3 hours from the first message (i.e. 4 hours from registration)
-              //     setTimeout(async () => {
-              //       let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-              //       if (user_data.icabbiStatus !== 1) {
-              //         await FinalReminder(new_user.user_id); // Send third reminder
-              //       }
-              //     }, 3 * 60 * 60 * 1000); // 3 hours after the first message
-              //   }
-              // }, 1 * 60 * 60 * 1000); // 1 hour after registration
               let data = await userModel.findOne({
                 where: { user_id: new_user.user_id },
                 include: [{

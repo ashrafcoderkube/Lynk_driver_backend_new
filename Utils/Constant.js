@@ -526,6 +526,26 @@ async function checkiCabbiAndSendWhatsAppMessage(user_id) {
     return error.message
   }
 }
+async function checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage(user_id) {
+  try {
+    let user = await userModel.findOne({
+      where: {
+        user_id: user_id
+      }
+    });
+    user = JSON.parse(JSON.stringify(user));
+    if (user) {
+      if (user.agreement_verified == true) {
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'sign_up_complete_between_fri4_sun12');
+        return data;
+      }
+    } else {
+      return false;
+    }
+  } catch (error) {
+    return error.message
+  }
+}
 async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocuments, user_id, templateName) {
   try {
     const templateMap = new Map([
@@ -534,7 +554,8 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       ["third_template_missing_icabbi_driver_app_v2", 2],
       ["reminder_24_hours", 4],
       ['reminder_72_hours', 5],
-      ['reminder_7_days', 6]
+      ['reminder_7_days', 6],
+      ['sign_up_complete_between_fri4_sun12', 7]
     ]);
     const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
     if (pendingDocuments != "") {
@@ -647,6 +668,15 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
             where: { user_id: user_id }
           });
           break;
+        case 7:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'Sign up complete between Friday 4 pm to Sunday 12 pm'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
         default:
           break;
       }
@@ -678,6 +708,7 @@ module.exports = {
   checkDocumentsAndSendWhatsAppMessage,
   checkAgreementsAndSendWhatsAppMessage,
   checkiCabbiAndSendWhatsAppMessage,
+  checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendMailForProfileRegister
 }
 

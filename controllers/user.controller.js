@@ -9,6 +9,7 @@ const {
   sendMailForHoliday,
   checkAgreementsAndSendWhatsAppMessage,
   checkiCabbiAndSendWhatsAppMessage,
+  checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendMailForDELETION
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
@@ -25,6 +26,7 @@ const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const jwt2 = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const moment = require('moment');
 module.exports = {
   getAttachments: async (req, res) => {
     try {
@@ -593,10 +595,24 @@ module.exports = {
           }, {
             where: { user_id: userId }
           });
+
           setTimeout(() => {
             checkiCabbiAndSendWhatsAppMessage(userId)
           }, 15 * 60 * 1000);
 
+          // Check if the current time is between Friday 4PM and Sunday 12 noon
+          const now = moment(); // current server time
+          const dayOfWeek = now.day(); // 0 is Sunday, 1 is Monday, ..., 5 is Friday
+
+          // Set Friday 4PM and Sunday 12 noon of the current week
+          const friday4pm = moment().day(5).hour(16).minute(0).second(0);
+          const sunday12noon = moment().day(0).add(1, 'week').hour(12).minute(0).second(0);
+
+          // Check if the current time is between Friday 4PM and Sunday 12 noon
+          if (now.isBetween(friday4pm, sunday12noon)) {
+            await checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage(userId)
+          }
+          
           let data = await userModel.findOne({
             where: { user_id: userId },
             include: [{
