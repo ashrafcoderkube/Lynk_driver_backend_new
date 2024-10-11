@@ -198,7 +198,7 @@ module.exports = {
               // First reminder after 24 hours
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
                   await InitialReminder(user_data.user_id);
                 }
               }, 24 * 60 * 60 * 1000); // 24 hours
@@ -206,7 +206,7 @@ module.exports = {
               // Reminder after 72 hours (3 days after the 24-hour message)
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
                   await SecondReminder(user_data.user_id); // 72-hour reminder
                 }
               }, (24 + 72) * 60 * 60 * 1000); // 72 hours after 24-hour reminder
@@ -214,7 +214,7 @@ module.exports = {
               // Reminder 7 days after the 24-hour message
               setTimeout(async () => {
                 let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0) {
+                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
                   await FinalReminder(user_data.user_id); // 7-day reminder
                 }
               }, (24 * 60 * 60 * 1000) + (7 * 24 * 60 * 60 * 1000)); // 7 days after 24-hour reminder

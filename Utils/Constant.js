@@ -137,23 +137,23 @@ const SOCKET = {
 // }
 // "darren.okeeffe@lynk.ie"
 function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPASSWORD = false, ISADMINREGISTER = false, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
-  // return new Promise((resolve, reject) => {
-  //   const transporter = nodemailer.createTransport({
-  //     host: 'localhost',
-  //     port: 25,
-  //     secure: false,
-  //     tls: {
-  //       rejectUnauthorized: false
-  //     }
-  //   });
   return new Promise((resolve, reject) => {
-    var transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.MY_EMAIL,
-        pass: process.env.MY_PASSWORD
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
       }
     });
+    // return new Promise((resolve, reject) => {
+    //   var transporter = nodemailer.createTransport({
+    //     service: 'gmail',
+    //     auth: {
+    //       user: process.env.MY_EMAIL,
+    //       pass: process.env.MY_PASSWORD
+    //     }
+    //   });
     console.log("send mail-------" + ISFORGOTPASSWORD);
 
     const ForgotPassword = htmlFileforgot.replace("{{REDIRECT}}", REDIRECT);
