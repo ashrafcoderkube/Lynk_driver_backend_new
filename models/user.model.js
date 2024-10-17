@@ -92,6 +92,14 @@ const user = con.define('users', {
         type: DataTypes.INTEGER,
         defaultValue: 0
     },
+    icabbi_driver_ref: {
+        type: DataTypes.STRING,
+        defaultValue: ""
+    },
+    icabbi_driver_app_pin: {
+        type: DataTypes.STRING,
+        defaultValue: ""
+    },
     template_id: {
         type: DataTypes.INTEGER
     },

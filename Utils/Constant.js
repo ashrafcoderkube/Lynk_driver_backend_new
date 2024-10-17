@@ -13,6 +13,7 @@ const deletionhtml = path.join(__dirname, '../Utils/Deletion.html');
 const holidayhtml = path.join(__dirname, '../Utils/Holiday.html');
 const profileUpdatehtml = path.join(__dirname, '../Utils/Profile-updated.html');
 const profileRegisterhtml = path.join(__dirname, '../Utils/profile-information.html');
+const icabbiStatushtml = path.join(__dirname, '../Utils/icabbistatusupdate.html');
 
 const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
@@ -22,6 +23,7 @@ const htmlHoliday = fs.readFileSync(holidayhtml, "utf8");
 const htmlProfileUpdate = fs.readFileSync(profileUpdatehtml, "utf8");
 const htmlDeletion = fs.readFileSync(deletionhtml, "utf8");
 const htmlProfileRegister = fs.readFileSync(profileRegisterhtml, "utf-8");
+const htmlicabbistatus = fs.readFileSync(icabbiStatushtml, "utf-8");
 
 const admin = require("firebase-admin");
 
@@ -146,6 +148,7 @@ function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPAS
         rejectUnauthorized: false
       }
     });
+
     // return new Promise((resolve, reject) => {
     //   var transporter = nodemailer.createTransport({
     //     service: 'gmail',
@@ -180,7 +183,41 @@ function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPAS
     });
   });
 }
-
+function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_APP_PIN, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+    // return new Promise((resolve, reject) => {
+    //   var transporter = nodemailer.createTransport({
+    //     service: 'gmail',
+    //     auth: {
+    //       user: process.env.MY_EMAIL,
+    //       pass: process.env.MY_PASSWORD
+    //     }
+    //   });
+    const icabbiStatus = htmlicabbistatus.replace("{{DRIVER_NAME}}", DRIVER_NAME).replace("{{DRIVER_REF}}", DRIVER_REF).replace("{{DRIVER_APP_PIN}}", DRIVER_APP_PIN);
+    const mail_configs = {
+      from: FROMEMAIL,
+      to: EMAIL,
+      subject: TITLE,
+      html: icabbiStatus,
+    };
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ message: 'Email send successfully' });
+    });
+  });
+}
 function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
@@ -546,6 +583,22 @@ async function checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage(us
     return error.message
   }
 }
+async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
+  try {
+    let user = await userModel.findOne({
+      where: {
+        user_id: user_id
+      }
+    });
+    user = JSON.parse(JSON.stringify(user));
+    if (user) {
+      const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v2');
+      return data;
+    }
+  } catch (error) {
+    return error.message
+  }
+}
 async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocuments, user_id, templateName) {
   try {
     const templateMap = new Map([
@@ -555,7 +608,8 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       ["reminder_24_hours", 4],
       ['reminder_72_hours', 5],
       ['reminder_7_days', 6],
-      ['sign_up_complete_between_fri4_sun12', 7]
+      ['sign_up_complete_between_fri4_sun12', 7],
+      ['icabbi_driver_ref_app_id_update_v2', 8]
     ]);
     const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
     if (pendingDocuments != "") {
@@ -585,6 +639,40 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
         template_id: 0,
         message_id: response.data.messages[0].messageId,
         message: 'first message from the template'
+      }, {
+        where: { user_id: user_id }
+      });
+      return response.data;
+    } else if (template_id == 8) {
+      let userData = await userModel.findOne({
+        where: { user_id: user_id }
+      });
+      userData = JSON.parse(JSON.stringify(userData));
+      const response = await axios.post('https://public.doubletick.io/whatsapp/message/template', {
+        messages: [
+          {
+            to: mobileNo,
+            content: {
+              templateName: templateName,
+              language: 'en',
+              templateData: {
+                body: {
+                  "placeholders": [driverName, userData.icabbi_driver_ref, userData.icabbi_driver_app_pin]
+                },
+              },
+              from: '+353858564510'
+            },
+          },
+        ],
+      }, {
+        headers: {
+          'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
+        },
+      });
+      await userModel.update({
+        template_id: 0,
+        message_id: response.data.messages[0].messageId,
+        message: 'Icabbi status updated of a driver'
       }, {
         where: { user_id: user_id }
       });
@@ -709,6 +797,8 @@ module.exports = {
   checkAgreementsAndSendWhatsAppMessage,
   checkiCabbiAndSendWhatsAppMessage,
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
+  sendWhatsAppMessageOnActiveIcabbiStatus,
+  sendMailforIccabiStatus,
   sendMailForProfileRegister
 }
 

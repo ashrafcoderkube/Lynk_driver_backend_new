@@ -18,7 +18,9 @@ const {
   Messages,
   sendMail,
   getCurrentTime,
-  sendMailForIBAN
+  sendMailForIBAN,
+  sendMailforIccabiStatus,
+  sendWhatsAppMessageOnActiveIcabbiStatus
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const {
@@ -1370,9 +1372,6 @@ module.exports = {
         where: { user_id: userId, is_deleted: 0 }
       });
       existUser = JSON.parse(JSON.stringify(existUser));
-      // const user = await Squery("SELECT * FROM users WHERE _id = ? LIMIT 1", [
-      //   userId,
-      // ]);
 
       if (!existUser) {
         res.status(StatusEnum.USER_NOT_FOUND).json({
@@ -1396,33 +1395,11 @@ module.exports = {
             is_deleted: req.body.is_deleted || existUser.is_deleted,
             icabbiStatus: req.body.icabbiStatus || existUser.icabbiStatus,
             profile_image: req.file ? BASEURL + req.file.path : existUser.profile_image,
+            icabbi_driver_ref: req.body.icabbi_driver_ref || existUser.icabbi_driver_ref,
+            icabbi_driver_app_pin: req.body.icabbi_driver_app_pin || existUser.icabbi_driver_app_pin
           }, {
             where: { user_id: userId }
           });
-          // const updateUserQuery = `
-          //           UPDATE users
-          //           SET first_name = ?, last_name = ?, country_code = ?, device_type = ?,
-          //               clicked_to_app = ?, type = ?, email = ?, password = ?,
-          //               mobile_no = ?, spsv = ?, is_deleted = ?,icabbiStatus = ?, profile_image = ?
-          //           WHERE _id = ?
-          //       `;
-
-          // await Squery(updateUserQuery, [
-          //   req.body.first_name || user[0].first_name,
-          //   req.body.last_name || user[0].last_name,
-          //   req.body.country_code || user[0].country_code,
-          //   req.body.device_type || user[0].device_type,
-          //   req.body.clicked_to_app || user[0].clicked_to_app,
-          //   req.body.type || user[0].type,
-          //   req.body.email || user[0].email,
-          //   req.body.password || user[0].password,
-          //   req.body.mobile_no || user[0].mobile_no,
-          //   req.body.spsv || user[0].spsv,
-          //   req.body.is_deleted || user[0].is_deleted,
-          //   req.body.icabbiStatus || user[0].icabbiStatus,
-          //   req.file ? BASEURL + req.file.path : user[0].profile_image,
-          //   userId,
-          // ]);
           let updatedUser = await userModel.findOne({
             where: { user_id: userId, is_deleted: 0 },
             include: [{
@@ -1431,7 +1408,6 @@ module.exports = {
             }]
           });
           updatedUser = JSON.parse(JSON.stringify(updatedUser));
-          // const updatedUser = await Squery('SELECT * FROM users LEFT JOIN docs ON users._id = docs.user_id WHERE users._id = ?', [userId]);
 
           if (req.file) {
             const fullName = updatedUser.first_name + updatedUser.last_name;
@@ -1451,6 +1427,16 @@ module.exports = {
               isAdminRegister
             );
           }
+          if (req.body?.is_active_icabbi == 1) {
+            await sendWhatsAppMessageOnActiveIcabbiStatus(existUser.user_id);
+            await sendMailforIccabiStatus(
+              updatedUser.first_name + " " + updatedUser.last_name,
+              updatedUser.email,
+              "iCabbi status updated.",
+              req.body.icabbi_driver_ref ? req.body.icabbi_driver_ref : "-",
+              req.body.icabbi_driver_app_pin ? req.body.icabbi_driver_app_pin : "-"
+            )
+          }
           // data._id = parseInt(userId, 0);
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
@@ -1458,10 +1444,6 @@ module.exports = {
             data: updatedUser
           });
         } else {
-          // const isEmail = await Squery(
-          //   "SELECT * FROM users WHERE email = ? LIMIT 1",
-          //   [email]
-          // );
           const isEmail = await userModel.findOne({
             where: { email: email, is_deleted: 0 }
           });
@@ -1485,14 +1467,12 @@ module.exports = {
               is_deleted: req.body.is_deleted || existUser.is_deleted,
               icabbiStatus: req.body.icabbiStatus || existUser.icabbiStatus,
               profile_image: req.file ? BASEURL + req.file.path : existUser.profile_image,
+              icabbi_driver_ref: req.body.icabbi_driver_ref || existUser.icabbi_driver_ref,
+              icabbi_driver_app_pin: req.body.icabbi_driver_app_pin || existUser.icabbi_driver_app_pin
             }, {
               where: { user_id: userId }
             });
 
-            // const updatedUser = await Squery(
-            //   "SELECT * FROM users WHERE _id = ? LIMIT 1",
-            //   [userId]
-            // );
             let updatedUser = await userModel.findOne({
               where: { user_id: userId, is_deleted: 0 },
               include: [{
@@ -1519,7 +1499,16 @@ module.exports = {
                 isAdminRegister
               );
             }
-
+            if (req.body?.is_active_icabbi == 1) {
+              await sendWhatsAppMessageOnActiveIcabbiStatus(existUser.user_id);
+              await sendMailforIccabiStatus(
+                updatedUser.first_name + " " + updatedUser.last_name,
+                updatedUser.email,
+                "iCabbi status updated.",
+                req.body.icabbi_driver_ref ? req.body.icabbi_driver_ref : "-",
+                req.body.icabbi_driver_app_pin ? req.body.icabbi_driver_app_pin : "-"
+              )
+            }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
               message: "User updated successfully",
