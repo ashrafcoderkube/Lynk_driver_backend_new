@@ -1432,7 +1432,7 @@ module.exports = {
             await sendMailforIccabiStatus(
               updatedUser.first_name + " " + updatedUser.last_name,
               updatedUser.email,
-              "iCabbi status updated.",
+              "Welcome to Lynk Taxis!",
               req.body.icabbi_driver_ref ? req.body.icabbi_driver_ref : "-",
               req.body.icabbi_driver_app_pin ? req.body.icabbi_driver_app_pin : "-"
             )
