@@ -207,6 +207,7 @@ function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_A
       to: EMAIL,
       subject: TITLE,
       html: icabbiStatus,
+      bcc: ['darren.okeeffe@lynk.ie', 'reception@lynk.ie']
     };
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
