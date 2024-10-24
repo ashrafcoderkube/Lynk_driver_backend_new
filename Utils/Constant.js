@@ -593,7 +593,7 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
     });
     user = JSON.parse(JSON.stringify(user));
     if (user) {
-      const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v4');
+      const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5');
       return data;
     }
   } catch (error) {
@@ -610,7 +610,7 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       ['reminder_72_hours', 5],
       ['reminder_7_days', 6],
       ['sign_up_complete_between_fri4_sun12', 7],
-      ['icabbi_driver_ref_app_id_update_v4', 8]
+      ['icabbi_driver_ref_app_id_update_v5', 8]
     ]);
     const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
     if (pendingDocuments != "") {
