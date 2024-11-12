@@ -5,6 +5,7 @@ const userModel = require('../models/user.model');
 module.exports = {
     handleWebhook: async (req, res) => {
         const { to, from, message, contact, dtMessageId, messageId, dtPairedMessageId, dtLastMessageId } = req.body;
+        console.log("Webhook Called");
         try {
             if (!message?.text) {
                 return res.status(400).send({ error: 'Response is required' });
@@ -511,6 +512,39 @@ module.exports = {
                         }
                     }
                     break;
+                case 9:
+                    if (message?.text.toLowerCase() == 'select option 1' ||
+                    message?.text.toLowerCase() == 'select option 2' ||
+                    message?.text.toLowerCase() == 'select option 3' ||
+                    message?.text.toLowerCase() == 'select option 4' ){
+                        let reply= "Thank You! \n We will reflect your selection on your Lynk profile.";
+                        const response = await axios.post('https://public.doubletick.io/whatsapp/message/text', {
+                            "content": {
+                                "text": reply
+                            },
+                            "from": to,
+                            "to": from
+
+                        }, {
+                            headers: {
+                                'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
+                            },
+                        });
+                        await userModel.update({
+                            message: reply,
+                            message_id: response.data?.messageId
+                        }, {
+                            where: { user_id: data.user_id }
+                        });
+                        console.log("Sent Data Response" ,response.data)
+                        console.log("massege Data Response" ,message?.text.toLowerCase())
+                        // Check if the message was sent successfully
+                        if (response.data.status === 'SENT') {
+                            res.status(200).send({ success: 'Message sent successfully.' });
+                        } else {
+                            res.status(500).send({ error: 'Failed to send message.' });
+                        }
+                    }
                 default:
                     break;
             }

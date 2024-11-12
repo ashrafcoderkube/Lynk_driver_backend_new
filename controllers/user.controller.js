@@ -10,7 +10,9 @@ const {
   checkAgreementsAndSendWhatsAppMessage,
   checkiCabbiAndSendWhatsAppMessage,
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
-  sendMailForDELETION
+  sendMailForDELETION,
+  sendMailForProfileUpdate,
+  sendWhatsAppMessageOnActiveIBANStatus
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
@@ -352,6 +354,11 @@ module.exports = {
         message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
         data: data.toJSON(),
       });
+      if(document_uploaded == "true" ){
+       await sendWhatsAppMessageOnActiveIBANStatus(userId)
+      }
+      
+
     } catch (error) {
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
         status: StatusEnum.INTERNAL_SERVER_ERROR,

@@ -14,6 +14,7 @@ const holidayhtml = path.join(__dirname, '../Utils/Holiday.html');
 const profileUpdatehtml = path.join(__dirname, '../Utils/Profile-updated.html');
 const profileRegisterhtml = path.join(__dirname, '../Utils/profile-information.html');
 const icabbiStatushtml = path.join(__dirname, '../Utils/icabbistatusupdate.html');
+const subcriptionhtml = path.join(__dirname, '../Utils/subcription.html');
 
 const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
@@ -24,6 +25,7 @@ const htmlProfileUpdate = fs.readFileSync(profileUpdatehtml, "utf8");
 const htmlDeletion = fs.readFileSync(deletionhtml, "utf8");
 const htmlProfileRegister = fs.readFileSync(profileRegisterhtml, "utf-8");
 const htmlicabbistatus = fs.readFileSync(icabbiStatushtml, "utf-8");
+const htmlsubcription = fs.readFileSync(subcriptionhtml, "utf-8");
 
 const admin = require("firebase-admin");
 
@@ -364,7 +366,34 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
     });
   });
 }
-
+function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+    const MailForProfileRegister = htmlsubcription.replace('{{DriverName}}', DRIVER_NAME);
+    const mail_configs = {
+      from: FROMEMAIL,
+      to: RECEIVEREMAIL,
+      // to: "arfaz.coderkuber@gmail.com",
+      subject: SUBJECT,
+      html: MailForProfileRegister,
+    };
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ message: 'Email send successfully' });
+    });
+  });
+}
 function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
@@ -594,8 +623,32 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
     user = JSON.parse(JSON.stringify(user));
     if (user) {
       const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5');
+      //  await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5');
+
+      setTimeout(async () => {
+        await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'pricing_models_22october2024_utility');
+        await sendMailForSubcription("Driver Payment Subcriptions", user.first_name, "donotreply@lynk.ie", user.email)
+      }, (72) * 60 * 60 * 1000);//(72) * 60 * 60 *
       return data;
     }
+  } catch (error) {
+    return error.message
+  }
+}
+async function sendWhatsAppMessageOnActiveIBANStatus(user_id) {
+  try {
+    setTimeout(async () => {
+      let user = await userModel.findOne({
+        where: {
+          user_id: user_id
+        }
+      });
+      user = JSON.parse(JSON.stringify(user));
+      if(user?.is_iban_submitted == 0){
+      await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');}
+    }, 15 * 60 * 1000);//(72) * 60 * 60 *
+    return data;
+
   } catch (error) {
     return error.message
   }
@@ -610,7 +663,9 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
       ['reminder_72_hours', 5],
       ['reminder_7_days', 6],
       ['sign_up_complete_between_fri4_sun12', 7],
-      ['icabbi_driver_ref_app_id_update_v5', 8]
+      ['icabbi_driver_ref_app_id_update_v5', 8],
+      ['pricing_models_22october2024_utility', 9],
+      ['ibann_template_missing_driver_v1', 10]
     ]);
     const template_id = templateMap.has(templateName) ? templateMap.get(templateName) : -1;
     if (pendingDocuments != "") {
@@ -766,6 +821,24 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
             where: { user_id: user_id }
           });
           break;
+        case 9:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'subcription options'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
+        case 10:
+          await userModel.update({
+            template_id: template_id,
+            message_id: response.data.messages[0].messageId,
+            message: 'Enter IBAN Number'
+          }, {
+            where: { user_id: user_id }
+          });
+          break;
         default:
           break;
       }
@@ -800,6 +873,33 @@ module.exports = {
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendWhatsAppMessageOnActiveIcabbiStatus,
   sendMailforIccabiStatus,
-  sendMailForProfileRegister
+  sendMailForProfileRegister,
+  sendWhatsAppMessageOnActiveIBANStatus
 }
 
+// /await sendDoubletickWhatsAppMessage("+919662367101", "Ashraf", "", 12, 'icabbi_driver_ref_app_id_update_v5');
+// axios.post('https://public.doubletick.io/whatsapp/message/template', {
+//   messages: [
+//     {
+//       to: "+919662367101",
+//       content: {
+//         templateName: "pricing_models_22october2024_utility",
+//         language: 'en',
+//         templateData: {
+//           body: {
+//             "placeholders": ["Ashraf"]
+//           },
+//         },
+//         from: '+353858564510'
+//       },
+//     },
+//   ],
+// }, {
+//   headers: {
+//     'Authorization': `key_osQNf7Kp9U`
+//   },
+// }).then((r) => {
+//   const msg_id = r.data.messages[0].messageId
+//   console.log("MESSAGE ID===============", msg_id);
+//   console.log("MESSAGE ID===============", r.data);
+// });
