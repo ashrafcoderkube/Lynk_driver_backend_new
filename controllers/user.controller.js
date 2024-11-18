@@ -12,7 +12,8 @@ const {
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendMailForDELETION,
   sendMailForProfileUpdate,
-  sendWhatsAppMessageOnActiveIBANStatus
+  sendWhatsAppMessageOnActiveIBANStatus,
+  sendMailForDriversInformation
 } = require("../Utils/Constant");
 const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
@@ -39,6 +40,24 @@ module.exports = {
         let documentData = await documentModel.findAll({
           where: { user_id: user_id }
         });
+        documentData = JSON.parse(JSON.stringify(documentData));
+        if (documentData) {
+          documentData.forEach(element => {
+            switch (element?.document_name) {
+              case 'White Garda SPSV Licence':
+                element['document_message'] = 'This is your Form P.S.V 17. Please upload your most recent licence. Expired licences will not be accepted.'
+                break;
+              case 'SPSV Vehicle Licence':
+                element['document_message'] = 'Please upload your most recent SPSV Vehicle Licence (the certificate you receive when your car passes suitability). Expired licences will not be accepted.'
+                break;
+              case 'Insurance Cert':
+                element['document_message'] = 'Please upload only your most recent full Insurance Cert. Expired insurances or window disc will not be accepted.'
+                break;
+              default:
+                break;
+            }
+          });
+        }
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           message: StatusMessages.SUCCESS,
@@ -355,9 +374,9 @@ module.exports = {
         data: data.toJSON(),
       });
       if(document_uploaded == "true" ){
-       await sendWhatsAppMessageOnActiveIBANStatus(userId)
+        await sendWhatsAppMessageOnActiveIBANStatus(userId)
       }
-      
+
 
     } catch (error) {
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
@@ -593,6 +612,7 @@ module.exports = {
         const user = await userModel.findOne({
           where: { user_id: userId }
         });
+
         if (user) {
           // Update the user's agreement details
           const userAgreementUpdate = await userModel.update({
@@ -619,7 +639,7 @@ module.exports = {
           if (now.isBetween(friday4pm, sunday12noon)) {
             await checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage(userId)
           }
-          
+
           let data = await userModel.findOne({
             where: { user_id: userId },
             include: [{
@@ -627,6 +647,24 @@ module.exports = {
               model: documentModel
             }]
           });
+          data = JSON.parse(JSON.stringify(data));
+          const fullName = data.first_name + " " + data.last_name;
+          const subject = `${fullName} has signed up to Lynk`;
+          const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
+          await sendMailForDriversInformation(
+            subject,
+            data.user_id,
+            fullName,
+            data.email,
+            data.mobile_no,
+            data.spsv,
+            data.attachment[0].document_url,
+            data.attachment[1].document_url,
+            data.attachment[2].document_url,
+            '', //iban number
+            data.agreement_version,
+            dynamicLink
+          );
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.AGREEMENT_SUCCESS,

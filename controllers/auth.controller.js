@@ -76,6 +76,22 @@ module.exports = {
                   model: documentModel
                 }]
               });
+              data = JSON.parse(JSON.stringify(data));
+              data.attachment.forEach(element => {
+                switch (element?.document_name) {
+                  case 'White Garda SPSV Licence':
+                    element['document_message'] = 'This is your Form P.S.V 17. Please upload your most recent licence. Expired licences will not be accepted.'
+                    break;
+                  case 'SPSV Vehicle Licence':
+                    element['document_message'] = 'Please upload your most recent SPSV Vehicle Licence (the certificate you receive when your car passes suitability). Expired licences will not be accepted.'
+                    break;
+                  case 'Insurance Cert':
+                    element['document_message'] = 'Please upload only your most recent full Insurance Cert. Expired insurances or window disc will not be accepted.'
+                    break;
+                  default:
+                    break;
+                }
+              });
               res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,
                 message: StatusMessages.LOGIN_SUCCESS,
@@ -224,6 +240,22 @@ module.exports = {
                   as: 'attachment',
                   model: documentModel
                 }]
+              });
+              data = JSON.parse(JSON.stringify(data));
+              data.attachment.forEach(element => {
+                switch (element?.document_name) {
+                  case 'White Garda SPSV Licence':
+                    element['document_message'] = 'This is your Form P.S.V 17. Please upload your most recent licence. Expired licences will not be accepted.'
+                    break;
+                  case 'SPSV Vehicle Licence':
+                    element['document_message'] = 'Please upload your most recent SPSV Vehicle Licence (the certificate you receive when your car passes suitability). Expired licences will not be accepted.'
+                    break;
+                  case 'Insurance Cert':
+                    element['document_message'] = 'Please upload only your most recent full Insurance Cert. Expired insurances or window disc will not be accepted.'
+                    break;
+                  default:
+                    break;
+                }
               });
               const subject = `Driver ${data.user_id} ${fullName} Registered`;
               const userSPSV = data.spsv;

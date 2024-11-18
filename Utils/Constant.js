@@ -15,6 +15,8 @@ const profileUpdatehtml = path.join(__dirname, '../Utils/Profile-updated.html');
 const profileRegisterhtml = path.join(__dirname, '../Utils/profile-information.html');
 const icabbiStatushtml = path.join(__dirname, '../Utils/icabbistatusupdate.html');
 const subcriptionhtml = path.join(__dirname, '../Utils/subcription.html');
+const documentUploadhtml = path.join(__dirname, '../Utils/document-pending.html');
+const driverInformationhtml = path.join(__dirname, '../Utils/driver-information.html');
 
 const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
@@ -26,6 +28,8 @@ const htmlDeletion = fs.readFileSync(deletionhtml, "utf8");
 const htmlProfileRegister = fs.readFileSync(profileRegisterhtml, "utf-8");
 const htmlicabbistatus = fs.readFileSync(icabbiStatushtml, "utf-8");
 const htmlsubcription = fs.readFileSync(subcriptionhtml, "utf-8");
+const htmlDocumentUpload = fs.readFileSync(documentUploadhtml, "utf-8");
+const htmlDriverInformation = fs.readFileSync(driverInformationhtml, "utf-8");
 
 const admin = require("firebase-admin");
 
@@ -431,7 +435,71 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
     });
   });
 }
+function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, PENDING_DOCUMENTS, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+    const MailForPendingDocuments = htmlDocumentUpload.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{DOCUMENT_NAME}}", PENDING_DOCUMENTS);
 
+    const mail_configs = {
+      from: FROMEMAIL,
+      to: RECEIVEREMAIL,
+      subject: SUBJECT,
+      html: MailForPendingDocuments,
+    };
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ message: 'Email send successfully' });
+    });
+  });
+}
+function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_PHONE, DRIVER_SPSV, DOCUMENT_1, DOCUMENT_2, DOCUMENT_3, DRIVER_IBAN, AGREEMENT_VERSION, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  return new Promise((resolve, reject) => {
+    var transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.MY_EMAIL,
+        pass: process.env.MY_PASSWORD
+      }
+    });
+    const MailForDriversInformation = htmlDriverInformation.replace('{{ID}}', DRIVER_ID)
+      .replace("{{NAME}}", DRIVER_NAME)
+      .replace("{{NAME2}}", DRIVER_NAME)
+      .replace("{{EMAIL}}", DRIVER_EMAIL)
+      .replace("{{PHONE}}", DRIVER_PHONE)
+      .replace("{{SPSV}}", DRIVER_SPSV)
+      .replace("{{DOCUMENT_1}}", DOCUMENT_1)
+      .replace("{{DOCUMENT_2}}", DOCUMENT_2)
+      .replace("{{DOCUMENT_3}}", DOCUMENT_3)
+      .replace("{{IBAN_No}}", DRIVER_IBAN)
+      .replace("{{AGREEMENT_VERSION}}", AGREEMENT_VERSION)
+      .replace("{{REDIRECT}}", REDIRECT_LINK);
+    const mail_configs = {
+      from: FROMEMAIL,
+      to: RECEIVEREMAIL,
+      subject: SUBJECT,
+      html: MailForDriversInformation,
+    };
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ message: 'Email send successfully' });
+    });
+  });
+}
 // Function to generate dynamic link
 const generateDynamicLink = async (userId) => {
   const dynamicLinkInfo = {
@@ -538,14 +606,26 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
       }]
     });
     user = JSON.parse(JSON.stringify(user));
-    // users.forEach(async (user) => {
+    const fullName = user.first_name + " " + user.last_name;
+    const subject = `Driver ${fullName} documents are pending.`;
+    const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(user.user_id);
+
     if (user) {
       const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
       if (pendingDocuments.length > 0) {
         const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, pendingDocuments, user.user_id, 'first_template_missing_document');
+        await sendMailForPendingDocuments(
+          subject,
+          user.user_id,
+          fullName,
+          user.email,
+          user.spsv,
+          user.mobile_no,
+          dynamicLink,
+          pendingDocuments
+        );
         return data;
       }
-      // });
     } else {
       return false
     }
@@ -644,8 +724,9 @@ async function sendWhatsAppMessageOnActiveIBANStatus(user_id) {
         }
       });
       user = JSON.parse(JSON.stringify(user));
-      if(user?.is_iban_submitted == 0){
-      await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');}
+      if (user?.is_iban_submitted == 0) {
+        await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');
+      }
     }, 15 * 60 * 1000);//(72) * 60 * 60 *
     return data;
 
@@ -874,6 +955,7 @@ module.exports = {
   sendWhatsAppMessageOnActiveIcabbiStatus,
   sendMailforIccabiStatus,
   sendMailForProfileRegister,
+  sendMailForDriversInformation,
   sendWhatsAppMessageOnActiveIBANStatus
 }
 
