@@ -198,16 +198,26 @@ module.exports = {
                 },
               ];
               const createUserDocument = await documentModel.bulkCreate(defaultDocs);
-              const isForgotPassword = false;
-              const fullName = first_name + " " + last_name;
-              const title = "Profile Image Uploaded";
-              const subTitle1 = "We received a new doc from this driver: " + fullName;
-              const subTitle2 = "Profile Image Received - " + fullName;
-              const redirectUrl = req.file ? (BASEURL + req.file.path) : "";
-              const isAdminRegister = false;
-              sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
-              setTimeout(() => {
-                checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
+              let user = await userModel.findOne({
+                where: {
+                  user_id: new_user.user_id
+                },
+                include: [{
+                  required: false,
+                  as: 'attachment',
+                  model: documentModel
+                }]
+              });
+              user = JSON.parse(JSON.stringify(user));
+              // const fullName = first_name + " " + last_name;
+              // const title = "Profile Image Uploaded";
+              // const subTitle1 = "We received a new doc from this driver: " + fullName;
+              // const subTitle2 = "Profile Image Received - " + fullName;
+              // const redirectUrl = req.file ? (BASEURL + req.file.path) : "";
+              // const isAdminRegister = false;
+              // sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
+              setTimeout(async () => {
+                await checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
               }, 15 * 60 * 1000);
 
 
@@ -257,20 +267,22 @@ module.exports = {
                     break;
                 }
               });
-              const subject = `Driver ${data.user_id} ${fullName} Registered`;
-              const userSPSV = data.spsv;
-              const userPhone = data.mobile_no;
-              const userEmail = data.email;
-              const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
-              await sendMailForProfileRegister(
-                subject,
-                data.user_id,
-                fullName,
-                userEmail,
-                userSPSV,
-                userPhone,
-                dynamicLink
-              );
+              // const subject = `Driver ${data.user_id} ${fullName} Registered`;
+              // const userSPSV = data.spsv;
+              // const userPhone = data.mobile_no;
+              // const userEmail = data.email;
+              // const userProfilePhoto = data.profile_image;
+              // const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
+              // await sendMailForProfileRegister(
+              //   subject,
+              //   data.user_id,
+              //   fullName,
+              //   userEmail,
+              //   userSPSV,
+              //   userPhone,
+              //   userProfilePhoto,
+              //   dynamicLink
+              // );
               res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,
                 message: StatusMessages.REGISTER_SUCCESS,

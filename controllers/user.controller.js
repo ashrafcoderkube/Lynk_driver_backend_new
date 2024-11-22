@@ -7,6 +7,7 @@ const {
   getCurrentTime,
   sendMailForIBAN,
   sendMailForHoliday,
+  checkDocumentsAndSendWhatsAppMessage,
   checkAgreementsAndSendWhatsAppMessage,
   checkiCabbiAndSendWhatsAppMessage,
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
@@ -102,7 +103,7 @@ module.exports = {
           video_thumbnail_new:
             "https://driverapp.lynk.ie/api/uploads/video_thumbnail.jpg",
           app_video:
-            "https://www.youtube.com/watch?v=WslHSFOaM94&feature=youtu.be",
+            "https://www.youtube.com/watch?v=f3qi5MdG5ZU",
           title: "Learn how to use Lynk’s iCabbi driver app",
           description:
             "Quick tutorial video: Accept Jobs, Refuse Jobs, Complete Booking and Price Fares.",
@@ -338,16 +339,16 @@ module.exports = {
         const currentDoc = await documentModel.findOne({ where: { document_id: imageDoc.document_id } });
         const subTitle2 = `${currentDoc.document_name} - ${fullName}`;
 
-        emailPromises.push(sendMail(
-          imageDoc.document_url,
-          userDetails.email,
-          fullName,
-          userId,
-          subTitle2,
-          imageDoc.document_url,
-          false,
-          false
-        ));
+        // emailPromises.push(sendMail(
+        //   imageDoc.document_url,
+        //   userDetails.email,
+        //   fullName,
+        //   userId,
+        //   subTitle2,
+        //   imageDoc.document_url,
+        //   false,
+        //   false
+        // ));
 
         return documentModel.update(
           { document_url: imageDoc.document_url },
@@ -356,22 +357,28 @@ module.exports = {
       });
 
       await Promise.all(updatePromises);
-      await Promise.all(emailPromises);
+      // await Promise.all(emailPromises);
 
       await userModel.update(
         { document_uploaded: document_uploaded === "true" },
         { where: { user_id: userId } }
       );
 
-      const data = await userModel.findOne({
+      let data = await userModel.findOne({
         where: { user_id: userId },
         include: [{ as: 'attachment', model: documentModel }],
       });
-
+      data = JSON.parse(JSON.stringify(data));
+      const pendingDocuments = data.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
+      if (pendingDocuments.length > 0) {
+        setTimeout(async () => {
+          await checkDocumentsAndSendWhatsAppMessage(userId)
+        }, 15 * 60 * 1000);
+      }
       res.status(StatusEnum.SUCCESS).json({
         status: StatusEnum.SUCCESS,
         message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
-        data: data.toJSON(),
+        data: data,
       });
       if(document_uploaded == "true" ){
         await sendWhatsAppMessageOnActiveIBANStatus(userId)
@@ -553,39 +560,41 @@ module.exports = {
           });
           data = JSON.parse(JSON.stringify(data));
 
-          if (req.file) {
-            const fullName = data.first_name + " " + data.last_name;
-            const title = "Profile Image Updated";
-            const subTitle1 = "We received a new doc from this driver: " + fullName;
-            const subTitle2 = "Profile Image Received - " + fullName;
-            const isForgotPassword = false;
-            const isAdminRegister = false;
-            sendMail(
-              data.profile_image,
-              data.email,
-              fullName,
-              data.user_id,
-              subTitle2,
-              data.profile_image,
-              isForgotPassword,
-              isAdminRegister
-            );
-          }
-          const fullName = data.first_name + " " + data.last_name;
-          const subject = `Driver ${data.user_id} ${fullName} Profile Updated`;
-          const userSPSV = data.spsv;
-          const userPhone = data.mobile_no;
-          const userEmail = data.email;
-          const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
-          await sendMailForProfileUpdate(
-            subject,
-            data.user_id,
-            fullName,
-            userEmail,
-            userSPSV,
-            userPhone,
-            dynamicLink
-          );
+          // if (req.file) {
+          //   const fullName = data.first_name + " " + data.last_name;
+          //   const title = "Profile Image Updated";
+          //   const subTitle1 = "We received a new doc from this driver: " + fullName;
+          //   const subTitle2 = "Profile Image Received - " + fullName;
+          //   const isForgotPassword = false;
+          //   const isAdminRegister = false;
+          //   sendMail(
+          //     data.profile_image,
+          //     data.email,
+          //     fullName,
+          //     data.user_id,
+          //     subTitle2,
+          //     data.profile_image,
+          //     isForgotPassword,
+          //     isAdminRegister
+          //   );
+          // }
+          // const fullName = data.first_name + " " + data.last_name;
+          // const subject = `Driver ${data.user_id} ${fullName} Profile Updated`;
+          // const userSPSV = data.spsv;
+          // const userPhone = data.mobile_no;
+          // const userEmail = data.email;
+          // const userProfileImage = data.profile_image;
+          // const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
+          // await sendMailForProfileUpdate(
+          //   subject,
+          //   data.user_id,
+          //   fullName,
+          //   userEmail,
+          //   userSPSV,
+          //   userPhone,
+          //   userProfileImage,
+          //   dynamicLink
+          // );
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.PROFILE_UPDATE_SUCCESS,
@@ -658,6 +667,7 @@ module.exports = {
             data.email,
             data.mobile_no,
             data.spsv,
+            data.profile_image,
             data.attachment[0].document_url,
             data.attachment[1].document_url,
             data.attachment[2].document_url,

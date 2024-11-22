@@ -333,7 +333,7 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
   });
 }
 
-function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
@@ -344,8 +344,7 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
         rejectUnauthorized: false
       }
     });
-
-    const MailForProfileUpdate = htmlProfileUpdate.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK);
+    const MailForProfileUpdate = htmlProfileUpdate.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE);
 
     console.log("from::-", FROMEMAIL)
     console.log("to::-", RECEIVEREMAIL)
@@ -398,7 +397,7 @@ function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@ly
     });
   });
 }
-function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
@@ -409,19 +408,16 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
         rejectUnauthorized: false
       }
     });
-
-    const MailForProfileRegister = htmlProfileRegister.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK);
+    const MailForProfileRegister = htmlProfileRegister.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE);
 
     console.log("from::-", FROMEMAIL)
     console.log("to::-", RECEIVEREMAIL)
-    // console.log("to::- arfaz.coderkuber@gmail.com")
     console.log("Driver Name:-", DRIVER_NAME)
     console.log("REDIRECT_LINK:-", REDIRECT_LINK)
 
     const mail_configs = {
       from: FROMEMAIL,
       to: RECEIVEREMAIL,
-      // to: "arfaz.coderkuber@gmail.com",
       subject: SUBJECT,
       html: MailForProfileRegister,
     };
@@ -435,7 +431,7 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
     });
   });
 }
-function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, REDIRECT_LINK, PENDING_DOCUMENTS, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, PENDING_DOCUMENTS, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
     const transporter = nodemailer.createTransport({
       host: 'localhost',
@@ -445,7 +441,7 @@ function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMA
         rejectUnauthorized: false
       }
     });
-    const MailForPendingDocuments = htmlDocumentUpload.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{DOCUMENT_NAME}}", PENDING_DOCUMENTS);
+    const MailForPendingDocuments = htmlDocumentUpload.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{DOCUMENT_NAME}}", PENDING_DOCUMENTS);
 
     const mail_configs = {
       from: FROMEMAIL,
@@ -463,13 +459,14 @@ function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMA
     });
   });
 }
-function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_PHONE, DRIVER_SPSV, DOCUMENT_1, DOCUMENT_2, DOCUMENT_3, DRIVER_IBAN, AGREEMENT_VERSION, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_PHONE, DRIVER_SPSV, DRIVER_PROFILE_IMAGE, DOCUMENT_1, DOCUMENT_2, DOCUMENT_3, DRIVER_IBAN, AGREEMENT_VERSION, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    var transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.MY_EMAIL,
-        pass: process.env.MY_PASSWORD
+    const transporter = nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
       }
     });
     const MailForDriversInformation = htmlDriverInformation.replace('{{ID}}', DRIVER_ID)
@@ -478,6 +475,7 @@ function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_E
       .replace("{{EMAIL}}", DRIVER_EMAIL)
       .replace("{{PHONE}}", DRIVER_PHONE)
       .replace("{{SPSV}}", DRIVER_SPSV)
+      .replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE)
       .replace("{{DOCUMENT_1}}", DOCUMENT_1)
       .replace("{{DOCUMENT_2}}", DOCUMENT_2)
       .replace("{{DOCUMENT_3}}", DOCUMENT_3)
@@ -607,7 +605,7 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
     });
     user = JSON.parse(JSON.stringify(user));
     const fullName = user.first_name + " " + user.last_name;
-    const subject = `Driver ${fullName} documents are pending.`;
+    const subject = `Driver ${fullName} Profile Details`;
     const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(user.user_id);
 
     if (user) {
@@ -621,6 +619,7 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
           user.email,
           user.spsv,
           user.mobile_no,
+          user.profile_image,
           dynamicLink,
           pendingDocuments
         );
