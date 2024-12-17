@@ -1,12 +1,6 @@
 
 const documentModel = require('../models/document.model');
-const { errorHandler } = require("../Utils/error");
-const {
-    BASEURL,
-    StatusEnum,
-    StatusMessages,
-    Messages,
-} = require("../Utils/Constant");
+const { StatusEnum, StatusMessages } = require("../Utils/Constant");
 
 
 module.exports = {
@@ -38,7 +32,7 @@ module.exports = {
     getDocs: async (req, res) => {
         try {
             const document_data = await documentModel.findAll({
-                attributes: ['document_name', 'document_url','user_id']
+                attributes: ['document_name', 'document_url', 'user_id']
             });
             res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,

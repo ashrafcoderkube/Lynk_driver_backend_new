@@ -2,8 +2,11 @@ const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require('path');
 const axios = require('axios');
+const { Op } = require('sequelize');
+const moment = require('moment');
 const userModel = require('../models/user.model');
 const documentModel = require('../models/document.model');
+const reportsModel = require('../models/reports.model');
 
 const acchtml = path.join(__dirname, '../Utils/new-acc.html');
 const forgothtml = path.join(__dirname, '../Utils/forget.html');
@@ -17,6 +20,7 @@ const icabbiStatushtml = path.join(__dirname, '../Utils/icabbistatusupdate.html'
 const subcriptionhtml = path.join(__dirname, '../Utils/subcription.html');
 const documentUploadhtml = path.join(__dirname, '../Utils/document-pending.html');
 const driverInformationhtml = path.join(__dirname, '../Utils/driver-information.html');
+const weeklyReportshtml = path.join(__dirname, '../Utils/weekly-report.html');
 
 const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
@@ -30,6 +34,7 @@ const htmlicabbistatus = fs.readFileSync(icabbiStatushtml, "utf-8");
 const htmlsubcription = fs.readFileSync(subcriptionhtml, "utf-8");
 const htmlDocumentUpload = fs.readFileSync(documentUploadhtml, "utf-8");
 const htmlDriverInformation = fs.readFileSync(driverInformationhtml, "utf-8");
+const htmlWeeklyReport = fs.readFileSync(weeklyReportshtml, "utf-8");
 
 const admin = require("firebase-admin");
 
@@ -156,11 +161,12 @@ function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPAS
     });
 
     // return new Promise((resolve, reject) => {
-    //   var transporter = nodemailer.createTransport({
-    //     service: 'gmail',
-    //     auth: {
-    //       user: process.env.MY_EMAIL,
-    //       pass: process.env.MY_PASSWORD
+    //   const transporter = nodemailer.createTransport({
+    //     host: 'localhost',
+    //     port: 25,
+    //     secure: false,
+    //     tls: {
+    //       rejectUnauthorized: false
     //     }
     //   });
     console.log("send mail-------" + ISFORGOTPASSWORD);
@@ -185,7 +191,7 @@ function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPAS
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -200,11 +206,12 @@ function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_A
       }
     });
     // return new Promise((resolve, reject) => {
-    //   var transporter = nodemailer.createTransport({
-    //     service: 'gmail',
-    //     auth: {
-    //       user: process.env.MY_EMAIL,
-    //       pass: process.env.MY_PASSWORD
+    //   const transporter = nodemailer.createTransport({
+    //     host: 'localhost',
+    //     port: 25,
+    //     secure: false,
+    //     tls: {
+    //       rejectUnauthorized: false
     //     }
     //   });
     const icabbiStatus = htmlicabbistatus.replace("{{DRIVER_NAME}}", DRIVER_NAME).replace("{{DRIVER_REF}}", DRIVER_REF).replace("{{DRIVER_APP_PIN}}", DRIVER_APP_PIN);
@@ -221,7 +228,7 @@ function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_A
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -235,7 +242,6 @@ function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EM
         rejectUnauthorized: false
       }
     });
-
     const MailForIBAN = htmlIBAN.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LYNK).replace("{{IBAN}}", IBAN_NUMBER);
 
 
@@ -254,7 +260,7 @@ function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EM
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -269,7 +275,6 @@ function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIV
         rejectUnauthorized: false
       }
     });
-
     const MailForDeletion = htmlDeletion.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LYNK);
 
 
@@ -289,7 +294,7 @@ function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIV
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -304,7 +309,6 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
         rejectUnauthorized: false
       }
     });
-
     const MailForHoliday = htmlHoliday.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{DRIVERNO}}", DRIVER_NO).replace("{{FROM}}", FROM).replace("{{TO}}", TO).replace("{{REASON}}", REASON).replace("{{CURRENTTIME}}", CURRENT_TIME);
 
 
@@ -328,7 +332,7 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, essage: 'Email send successfully' });
     });
   });
 }
@@ -355,7 +359,6 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
     const mail_configs = {
       from: FROMEMAIL,
       to: RECEIVEREMAIL,
-      // to: "arfaz.coderkuber@gmail.com",
       subject: SUBJECT,
       html: MailForProfileUpdate,
     };
@@ -365,7 +368,7 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -383,7 +386,6 @@ function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@ly
     const mail_configs = {
       from: FROMEMAIL,
       to: RECEIVEREMAIL,
-      // to: "arfaz.coderkuber@gmail.com",
       subject: SUBJECT,
       html: MailForProfileRegister,
     };
@@ -393,7 +395,7 @@ function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@ly
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -427,7 +429,7 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -455,7 +457,7 @@ function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMA
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -494,7 +496,7 @@ function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_E
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ message: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -612,7 +614,7 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
       const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
       if (pendingDocuments.length > 0) {
         const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, pendingDocuments, user.user_id, 'first_template_missing_document');
-        await sendMailForPendingDocuments(
+        let mail = await sendMailForPendingDocuments(
           subject,
           user.user_id,
           fullName,
@@ -623,6 +625,13 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
           dynamicLink,
           pendingDocuments
         );
+        if (mail.res == 0) {
+          let report_data = await reportsModel.create({
+            user_id: user_id,
+            subject: 'Pending Documents.',
+            date: moment().format('YYYY-MM-DD HH:mm:ss')
+          })
+        }
         return data;
       }
     } else {
@@ -701,12 +710,18 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
     });
     user = JSON.parse(JSON.stringify(user));
     if (user) {
-      const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5');
-      //  await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5');
-
+      await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5')
       setTimeout(async () => {
-        await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'pricing_models_22october2024_utility');
-        await sendMailForSubcription("Driver Payment Subcriptions", user.first_name, "donotreply@lynk.ie", user.email)
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'pricing_models_22october2024_utility');
+        const mail = await sendMailForSubcription("Driver Payment Subcriptions", user.first_name, "donotreply@lynk.ie", user.email)
+        if (mail.res == 0) {
+          let report_data = await reportsModel.create({
+            user_id: user_id,
+            subject: 'Driver Payment Subscription.',
+            date: moment().format('YYYY-MM-DD HH:mm:ss')
+          })
+        }
+
       }, (72) * 60 * 60 * 1000);//(72) * 60 * 60 *
       return data;
     }
@@ -724,7 +739,7 @@ async function sendWhatsAppMessageOnActiveIBANStatus(user_id) {
       });
       user = JSON.parse(JSON.stringify(user));
       if (user?.is_iban_submitted == 0) {
-        await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');
+        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');
       }
     }, 15 * 60 * 1000);//(72) * 60 * 60 *
     return data;
@@ -733,6 +748,86 @@ async function sendWhatsAppMessageOnActiveIBANStatus(user_id) {
     return error.message
   }
 }
+async function sendWeeklyReportsEmail(SUBJECT, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  try {
+    // Calculate the start and end dates for the previous week (Monday to Sunday)
+    const now = new Date(); // Current date in UTC
+    const endDate = new Date();
+    endDate.setUTCDate(now.getUTCDate() - (now.getUTCDay() === 0 ? 7 : now.getUTCDay())); // Last Sunday's date
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(endDate.getUTCDate() - 6); // Previous Monday's date
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    // Convert dates to `YYYY-MM-DD HH:mm:ss` format
+    const formattedStartDate = startDate.toISOString().slice(0, 19).replace('T', ' ');
+    const formattedEndDate = endDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    // Query the database
+    const data = await reportsModel.findAll({
+      where: {
+        date: {
+          [Op.between]: [formattedStartDate, formattedEndDate] // Filter by date range
+        }
+      },
+      include: [{
+        model: userModel,
+        where: { is_deleted: 0 },
+        attributes: ['first_name', 'last_name']
+      }]
+    });
+    // Prepare the data for email content
+    const reportData = data.map(item => ({
+      driverId: item?.user_id,
+      driverName: `${item?.user?.first_name} ${item?.user?.last_name}`,
+      subject: item?.subject,
+      emailSent: formatDate(item?.createdAt)
+    }));
+
+    // Insert rows into the HTML
+    let rows = '';
+    reportData.forEach(item => {
+      rows += `
+        <tr>
+          <td style="border: 1px solid gray; padding: 15px; width: 80px; text-align: center;">${item.driverId}</td>
+          <td style="border: 1px solid gray; padding: 15px; width: 200px;">${item.driverName}</td>
+          <td style="border: 1px solid gray; padding: 15px; width: 313px;">${item.subject}</td>
+          <td style="border: 1px solid gray; padding: 15px; width: 230px; text-align: center;">${item.emailSent}</td>
+        </tr>`;
+    });
+
+    return new Promise((resolve, reject) => {
+      const transporter = nodemailer.createTransport({
+        host: 'localhost',
+        port: 25,
+        secure: false,
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+      const MailForWeeklyReports = htmlWeeklyReport.replace('{{reportRows}}', rows)
+
+      const mail_configs = {
+        from: FROMEMAIL,
+        to: RECEIVEREMAIL,
+        subject: SUBJECT,
+        html: MailForWeeklyReports,
+      };
+      transporter.sendMail(mail_configs, function (error, info) {
+        if (error) {
+          console.log(error);
+          return reject({ message: 'An error has occurred' });
+        }
+        console.log(info);
+        return resolve({ res: 0, message: 'Email send successfully' });
+      });
+    });
+  } catch (error) {
+    console.error('Error fetching weekly data:', error);
+  }
+}
+
 async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocuments, user_id, templateName) {
   try {
     const templateMap = new Map([
@@ -929,6 +1024,26 @@ async function sendDoubletickWhatsAppMessage(mobileNo, driverName, pendingDocume
     console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);
   }
 }
+function formatDate(date) {
+  const d = new Date(date);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Adding 1 to month as it is zero-indexed
+  const day = String(d.getDate()).padStart(2, '0');
+
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const isPM = hours >= 12;
+
+  if (hours > 12) hours -= 12;  // Convert to 12-hour format
+  if (hours === 0) hours = 12;  // Convert 0 to 12 for 12 AM
+
+  const period = isPM ? 'PM' : 'AM';
+
+  // Format the final string as YYYY-MM-DD hh:mm A
+  const formattedDate = `${year}-${month}-${day} ${hours}:${minutes} ${period}`;
+  return formattedDate;
+}
 module.exports = {
   SOCKET,
   StatusEnum,
@@ -955,32 +1070,6 @@ module.exports = {
   sendMailforIccabiStatus,
   sendMailForProfileRegister,
   sendMailForDriversInformation,
+  sendWeeklyReportsEmail,
   sendWhatsAppMessageOnActiveIBANStatus
 }
-
-// /await sendDoubletickWhatsAppMessage("+919662367101", "Ashraf", "", 12, 'icabbi_driver_ref_app_id_update_v5');
-// axios.post('https://public.doubletick.io/whatsapp/message/template', {
-//   messages: [
-//     {
-//       to: "+919662367101",
-//       content: {
-//         templateName: "pricing_models_22october2024_utility",
-//         language: 'en',
-//         templateData: {
-//           body: {
-//             "placeholders": ["Ashraf"]
-//           },
-//         },
-//         from: '+353858564510'
-//       },
-//     },
-//   ],
-// }, {
-//   headers: {
-//     'Authorization': `key_osQNf7Kp9U`
-//   },
-// }).then((r) => {
-//   const msg_id = r.data.messages[0].messageId
-//   console.log("MESSAGE ID===============", msg_id);
-//   console.log("MESSAGE ID===============", r.data);
-// });

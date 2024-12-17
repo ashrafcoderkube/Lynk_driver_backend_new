@@ -103,20 +103,6 @@ module.exports = {
                             res.status(500).send({ error: 'Failed to send message.' });
                         }
                     } else {
-                        // if (isWithinBusinessHours()) {
-                        //     reply = "Thanks! We’ll get back to you shortly";
-                        // } else {
-                        //     reply = "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
-                        // }
-                        // if (isWithinBusinessHours()) {
-                        //     reply = data?.message === "Thanks! We’ll get back to you shortly"
-                        //         ? `We have your message ${data.first_name} ${data.last_name}. Please bear with us and we'll get back to you shortly.`
-                        //         : "Thanks! We’ll get back to you shortly";
-                        // } else {
-                        //     reply = data?.message === "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day."
-                        //         ? `We have your message ${data.first_name} ${data.last_name}. Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.`
-                        //         : "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.";
-                        // }
                         if (isWithinBusinessHours()) {
                             if (data?.message == `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`) {
                                 reply = `We have your message ${data.first_name}. Please bear with us and we'll get back to you shortly.`
@@ -147,27 +133,12 @@ module.exports = {
                                 'Authorization': `${process.env.DOUBLE_TICK_API_KEY}`,
                             },
                         });
-                        // if (reply == "Thanks! We’ll get back to you shortly" || reply == "Thanks! Our Driver Team department is currently closed, but we'll be happy to assist you as soon as we're back on the next working day.") {
                         await userModel.update({
                             message: reply,
                             message_id: response.data?.messageId
                         }, {
                             where: { user_id: data.user_id }
                         });
-                        // } else {
-                        //     await userModel.update({
-                        //         message: message?.text,
-                        //         message_id: response.data?.messageId
-                        //     }, {
-                        //         where: { user_id: data.user_id }
-                        //     });
-                        // }
-                        // await userModel.update({
-                        //     message: reply,
-                        //     message_id: response.data?.messageId
-                        // }, {
-                        //     where: { user_id: data.user_id }
-                        // });
                         // Check if the message was sent successfully
                         if (response.data.status === 'SENT') {
                             res.status(200).send({ success: 'Message sent successfully.' });

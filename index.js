@@ -3,11 +3,8 @@ const PORT = process.env.PORT || 8888;
 const app = express();
 const fs = require('fs');
 const http = require('http');
+const cron = require('node-cron');
 const con = require('./config/db.config');
-// const userModel = require('../models/user.model');
-// const documentModel = require("../models/document.model");
-// const leadsModel = require('./models/leads.model');
-// const messagesModel = require('./models/messages.model');
 const models = require('./models/index');
 const path = require('path');
 const userRoutes = require('./routes/user.routes');
@@ -16,6 +13,7 @@ const agreementRoutes = require('./routes/agreement.route');
 const documentRoutes = require('./routes/document.route');
 const authRoutes = require('./routes/auth.route');
 const webhookRoutes = require('./routes/webhook.route');
+const { sendWeeklyReportsEmail } = require('./Utils/Constant');
 
 require('dotenv').config();
 
@@ -43,13 +41,23 @@ app.use((req, res, next) => {
     });
     next();
 });
+
+// Runs every Monday at 11:00 AM GMT
+cron.schedule('0 11 * * 1', async () => {
+    // cron.schedule('*/1 * * * *', () => {
+    const subject = 'Weekly Report.'
+    console.log('Task is running every Monday at 11:00 AM GMT');
+    await sendWeeklyReportsEmail(subject);
+});
+
+
+
 app.use('/', authRoutes);
 app.use('/agreement', agreementRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 app.use('/document', documentRoutes);
 app.use('/webhook', webhookRoutes);
-
 app.listen(PORT, (err) => {
     if (err) console.log("Error in server setup")
     console.log(`Server listening at ${PORT}.`);

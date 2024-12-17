@@ -3,10 +3,8 @@ const agreementModel = require('../models/agreement.model');
 const documentModel = require('../models/document.model');
 const leadsModel = require('../models/leads.model');
 const messageModel = require('../models/messages.model');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const reportsModel = require('../models/reports.model');
 const { Sequelize, Op, where } = require('sequelize');
-const exceljs = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
@@ -18,20 +16,10 @@ const {
   Messages,
   sendMail,
   getCurrentTime,
-  sendMailForIBAN,
   sendMailforIccabiStatus,
   sendWhatsAppMessageOnActiveIcabbiStatus
 } = require("../Utils/Constant");
-const { errorHandler } = require("../Utils/error");
-const {
-  validateEmail,
-  validatePhone,
-  validateRequiredField,
-  checkSocialType,
-} = require("../Utils/Validations");
-const { use } = require('../routes/admin.route');
-const { CONSTANTS } = require('@firebase/util');
-const e = require('express');
+const { validateEmail } = require("../Utils/Validations");
 
 module.exports = {
   login: async (req, res) => {
@@ -642,14 +630,9 @@ module.exports = {
               });
             }
           }
-          // const page = parseInt(req.query.page) || 1;
-          // const pageSize = 10;
-          // const offset = (page - 1) * pageSize;
           let userData = await userModel.findAndCountAll({
             where: whereCondition,
-            order: [[sortField, sortOrder]],
-            // limit: pageSize,
-            // offset: offset,
+            order: [[sortField, sortOrder]]
           });
           userData = JSON.parse(JSON.stringify(userData));
           const updatedResults = await Promise.all(userData.rows.map(async (user) => {
@@ -743,11 +726,8 @@ module.exports = {
             if (err) {
               console.error(err);
               res.status(err.status).end();
-            } else {
-              //console.log(`File sent: ${filePath}`);
             }
           });
-          // fs.unlinkSync(filePath);
           return;
 
         }
@@ -784,9 +764,6 @@ module.exports = {
             let device_type = req.query.device_type || ['Android', 'iOS', 'Desktop'];
             const sortField = req.query.sortField || "createdAt";
             const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
-            // const page = parseInt(req.query.page) || 1;
-            // const pageSize = 10;
-            // const offset = (page - 1) * pageSize;
 
             let whereCondition = {
               device_type: device_type,
@@ -851,12 +828,9 @@ module.exports = {
               }
             }
             const totalNumberOfUser = await userModel.count({ where: whereCondition });
-            // const totalPages = Math.ceil(totalNumberOfUser / pageSize);
             let userData = await userModel.findAndCountAll({
               where: whereCondition,
               order: [[sortField, sortOrder]],
-              // limit: pageSize,
-              // offset: offset,
               include: [{
                 required: true,
                 as: 'attachment',
@@ -883,12 +857,7 @@ module.exports = {
               user['status'] = status;
             });
             const downloadFolderPath = path.join(__dirname, "../downloads");
-            // const randomString = Math.floor(1000 + Math.random() * 9000);
-            // const fileName = `drivers_${randomString}.csv`;
             const filePath = path.join(downloadFolderPath, "reports.csv");
-
-            //console.log("downloadFolderPath", downloadFolderPath);
-            //console.log("filePath", filePath);
 
             // Ensure the 'downloads' folder exists
             if (!fs.existsSync(downloadFolderPath)) {
@@ -943,17 +912,8 @@ module.exports = {
               if (err) {
                 console.error(err);
                 res.status(err.status).end();
-              } else {
-                //console.log(`File sent: ${filePath}`);
               }
             });
-            // res.status(StatusEnum.SUCCESS).json({
-            //   message: StatusMessages.SUCCESS,
-            //   status: StatusEnum.SUCCESS,
-            //   data: userData.rows,
-            //   page: page,
-            //   totalPages: totalPages,
-            // });
           }
         } else {
           res.status(StatusEnum.SUCCESS).json({
@@ -1116,87 +1076,6 @@ module.exports = {
       });
     }
   },
-  // getLastTwoWeekUsers: async (req, res) => {
-  //   try {
-  //     const { id, uid, page, firstName, lastName, email, mobile, spsv, type } = req.query;
-
-  //     const twoWeeksAgo = new Date();
-  //     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
-  //     const sortField = req.query.sortField || "createdAt";
-  //     const sortOrder = req.query.sortOrder && req.query.sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
-  //     const existUser = await userModel.findOne({
-  //       where: { user_id: id }
-  //     });
-
-  //     if (existUser) {
-  //       if (existUser.type == "user") {
-  //         res.status(StatusEnum.NOT_FOUND).json({
-  //           status: StatusEnum.NOT_FOUND,
-  //           data: Messages.You_Are_Not_Admin,
-  //           message: StatusMessages.You_Are_Not_Admin,
-  //         });
-  //       } else {
-  //         const page = parseInt(req.body.page) || 1;
-  //         const pageSize = 10;
-  //         const offset = (page - 1) * pageSize;
-  //         const userData = await userModel.findAndCountAll({
-  //           where: {
-  //             [Sequelize.Op.or]: [
-  //               {
-  //                 first_name: {
-  //                   [Sequelize.Op.like]: `%${firstName}%`
-  //                 }
-  //               },
-  //               {
-  //                 last_name: {
-  //                   [Sequelize.Op.like]: `%${lastName}%`
-  //                 }
-  //               },
-  //               {
-  //                 email: {
-  //                   [Sequelize.Op.like]: `%${email}%`
-  //                 }
-  //               },
-  //               {
-  //                 mobile_no: {
-  //                   [Sequelize.Op.like]: `%${mobile}%`
-  //                 }
-  //               },
-  //             ],
-  //             createdAt: {
-  //               [Sequelize.Op.gte]: twoWeeksAgo
-  //             }
-  //           },
-  //           order: [[sortField, sortOrder]],
-  //           limit: pageSize,
-  //           offset: offset,
-  //         });
-  //         res.status(StatusEnum.SUCCESS).json({
-  //           status: StatusEnum.SUCCESS,
-  //           message: StatusMessages.SUCCESS,
-  //           data: userData,
-  //           // page: page,
-  //           // totalPages: totalPages,
-  //         });
-  //         // return;
-  //         // responseHelper.successResponse(res, StatusEnum.SUCCESS, userData, StatusMessages.SUCCESS);
-  //       }
-  //     } else {
-  //       res.status(StatusEnum.NOT_FOUND).json({
-  //         status: StatusEnum.NOT_FOUND,
-  //         data: "User not found.",
-  //         message: StatusMessages.NOT_FOUND,
-  //       });
-  //       return;
-  //     }
-  //   } catch (error) {
-  //     res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
-  //       status: StatusEnum.INTERNAL_SERVER_ERROR,
-  //       message: error.message,
-  //     });
-  //   }
-  // },
   getLastTwoWeekUsers: async (req, res) => {
     try {
       function getStartOfWeekDate() {
@@ -1429,13 +1308,20 @@ module.exports = {
           }
           if (req.body?.is_active_icabbi == 1) {
             await sendWhatsAppMessageOnActiveIcabbiStatus(existUser.user_id);
-            await sendMailforIccabiStatus(
+            let mail = await sendMailforIccabiStatus(
               updatedUser.first_name + " " + updatedUser.last_name,
               updatedUser.email,
               "Welcome to Lynk Taxis!",
               req.body.icabbi_driver_ref ? req.body.icabbi_driver_ref : "-",
               req.body.icabbi_driver_app_pin ? req.body.icabbi_driver_app_pin : "-"
             )
+            if (mail.res == 0) {
+              let report_data = await reportsModel.create({
+                user_id: existUser.user_id,
+                subject: 'iCabbi status updated.',
+                date: moment().format('YYYY-MM-DD HH:mm:ss')
+              });
+            }
           }
           // data._id = parseInt(userId, 0);
           res.status(StatusEnum.SUCCESS).json({
@@ -1501,13 +1387,20 @@ module.exports = {
             }
             if (req.body?.is_active_icabbi == 1) {
               await sendWhatsAppMessageOnActiveIcabbiStatus(existUser.user_id);
-              await sendMailforIccabiStatus(
+              let mail = await sendMailforIccabiStatus(
                 updatedUser.first_name + " " + updatedUser.last_name,
                 updatedUser.email,
                 "iCabbi status updated.",
                 req.body.icabbi_driver_ref ? req.body.icabbi_driver_ref : "-",
                 req.body.icabbi_driver_app_pin ? req.body.icabbi_driver_app_pin : "-"
               )
+              if (mail.res == 0) {
+                let report_data = await reportsModel.create({
+                  user_id: existUser.user_id,
+                  subject: 'iCabbi status updated.',
+                  date: moment().format('YYYY-MM-DD HH:mm:ss')
+                });
+              }
             }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
@@ -1919,11 +1812,7 @@ module.exports = {
           where: { user_id: user_id }
         });
         userData = JSON.parse(JSON.stringify(userData));
-        // const userData = await Squery('SELECT * FROM users WHERE _id = ?', [req.query.user_id]);
         const messageData = await messageModel.findAll();
-        // const messageData = await Squery(
-        //   "SELECT * FROM messages");
-        // console.log("messageData", messageData);
         if (userData) {
           if (userData.type === "user") {
             res.status(StatusEnum.NOT_FOUND).json({

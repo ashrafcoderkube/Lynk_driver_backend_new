@@ -6,26 +6,18 @@ const {
   Messages,
   sendMail,
   getCurrentTime,
-  sendMailForProfileRegister,
   checkDocumentsAndSendWhatsAppMessage,
   InitialReminder,
   SecondReminder,
   FinalReminder
 } = require("../Utils/Constant");
-const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
-const {
-  validateEmail,
-  validatePhone,
-  validateRequiredField,
-  checkSocialType,
-} = require("../Utils/Validations");
+const { validateEmail } = require("../Utils/Validations");
 
-const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const versionControlModel = require('../models/version_control.model');
-const userController = require('../controllers/user.controller');
+const reportsModel = require('../models/reports.model');
 const sequelize = require('sequelize');
 module.exports = {
 
@@ -42,7 +34,6 @@ module.exports = {
           const userData = await userModel.findOne({
             where: { email: email, is_deleted: 0 }
           });
-          // const results = await Squery('SELECT * FROM users WHERE email = ? AND password = ?', [req.body.email, req.body.password]);
 
           if (!userData) {
             res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
@@ -51,7 +42,6 @@ module.exports = {
             });
             return;
           } else {
-            // if (!bcrypt.compareSync(password, userData.password)) {
             if (password != userData.password) {
               res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
                 status: StatusEnum.CREDENTIS_NOT_MATCHED,
@@ -97,12 +87,6 @@ module.exports = {
                 message: StatusMessages.LOGIN_SUCCESS,
                 data: JSON.parse(JSON.stringify(data))
               });
-              // } else {
-              // res.status(StatusEnum.CREDENTIS_NOT_MATCHED).json({
-              //     status: StatusEnum.CREDENTIS_NOT_MATCHED,
-              //     message: StatusMessages.CREDENTIS_NOT_MATCHED,
-              // });
-              // }
             }
           }
         } else {
@@ -161,10 +145,6 @@ module.exports = {
           } else {
             if (validateEmail(email)) {
               let Token = jwt.generateToken({ email: email, password: password }, jwt.secretKey());
-              // const saltRounds = 10;
-              // const salt = await bcrypt.genSalt(saltRounds);
-              // const hashedPassword = await bcrypt.hash(password, salt);
-              // Insert new user into the users table
               let new_user = await userModel.create({
                 email: email.toLowerCase(),
                 first_name: first_name,
@@ -209,13 +189,6 @@ module.exports = {
                 }]
               });
               user = JSON.parse(JSON.stringify(user));
-              // const fullName = first_name + " " + last_name;
-              // const title = "Profile Image Uploaded";
-              // const subTitle1 = "We received a new doc from this driver: " + fullName;
-              // const subTitle2 = "Profile Image Received - " + fullName;
-              // const redirectUrl = req.file ? (BASEURL + req.file.path) : "";
-              // const isAdminRegister = false;
-              // sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
               setTimeout(async () => {
                 await checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
               }, 15 * 60 * 1000);
@@ -267,22 +240,6 @@ module.exports = {
                     break;
                 }
               });
-              // const subject = `Driver ${data.user_id} ${fullName} Registered`;
-              // const userSPSV = data.spsv;
-              // const userPhone = data.mobile_no;
-              // const userEmail = data.email;
-              // const userProfilePhoto = data.profile_image;
-              // const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
-              // await sendMailForProfileRegister(
-              //   subject,
-              //   data.user_id,
-              //   fullName,
-              //   userEmail,
-              //   userSPSV,
-              //   userPhone,
-              //   userProfilePhoto,
-              //   dynamicLink
-              // );
               res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,
                 message: StatusMessages.REGISTER_SUCCESS,
@@ -309,10 +266,6 @@ module.exports = {
           } else {
             if (validateEmail(email)) {
               let Token = jwt.generateToken({ email: email, password: password }, jwt.secretKey());
-              // const saltRounds = 10;
-              // const salt = await bcrypt.genSalt(saltRounds);
-              // const hashedPassword = await bcrypt.hash(password, salt);
-              // Insert new user into the users table
               let new_user = await userModel.create({
                 email: email.toLowerCase(),
                 first_name: first_name,
@@ -336,9 +289,14 @@ module.exports = {
               const subTitle2 = "New Account Ready";
               const redirectUrl = "https://driverapp.lynk.ie/login";
               const isAdminRegister = false;
-              sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
-
-
+              const mail = await sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
+              if (mail.res == 0) {
+                let report_data = await reportsModel.create({
+                  user_id: new_user.user_id,
+                  subject: 'New Account Registered.',
+                  date: moment().format('YYYY-MM-DD HH:mm:ss')
+                });
+              }
               let data = await userModel.findOne({
                 where: { user_id: new_user.user_id }
               });

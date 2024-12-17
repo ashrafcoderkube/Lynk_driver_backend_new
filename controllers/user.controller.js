@@ -12,25 +12,20 @@ const {
   checkiCabbiAndSendWhatsAppMessage,
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendMailForDELETION,
-  sendMailForProfileUpdate,
   sendWhatsAppMessageOnActiveIBANStatus,
   sendMailForDriversInformation
 } = require("../Utils/Constant");
-const { errorHandler } = require("../Utils/error");
 const jwt = require("../Utils/jwtToken");
-const {
-  validateEmail,
-  validatePhone,
-  validateRequiredField,
-  checkSocialType,
-} = require("../Utils/Validations");
+const { validateEmail } = require("../Utils/Validations");
 
 const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
+const reportsModel = require('../models/reports.model');
+
 const jwt2 = require('jsonwebtoken');
-const { Op } = require('sequelize');
-const moment = require('moment');
+const moment = require('moment'); 
+
 module.exports = {
   getAttachments: async (req, res) => {
     try {
@@ -180,10 +175,6 @@ module.exports = {
       } else if (!newPassword) {
         res.status(StatusEnum.TOKEN_EXP).json({ message: 'Please provide password.' });
       } else {
-        // const saltRounds = 10;
-        // const salt = await bcrypt.genSalt(saltRounds);
-        // const hashedPassword = await bcrypt.hash(newPassword, salt);
-        // Find the user in the database by email
         const existUser = await userModel.findOne({
           where: { email: email }
         });
@@ -216,104 +207,6 @@ module.exports = {
       });
     }
   },
-  // UploadImage: async (req, res) => {
-  //   try {
-  //     const userId = req.body.userId;
-  //     const imageFiles = req.files;
-  //     const docIds = req.body.docIds.split(", ");
-  //     const isRegistered = req.body.isRegistered || "false";
-  //     let imageDocs = [];
-
-  //     for (let i = 0; i < docIds.length; i++) {
-  //       const file = imageFiles[i];
-  //       const docId = docIds[i];
-
-  //       imageDocs.push({
-  //         document_id: docId,
-  //         document_url: BASEURL + file.path,
-  //       });
-  //     }
-
-  //     let userDetails = await userModel.findOne({
-  //       where: { user_id: userId }
-  //     });
-  //     userDetails = JSON.parse(JSON.stringify(userDetails));
-
-  //     if (userDetails) {
-  //       const fullName = userDetails.first_name + " " + userDetails.last_name;
-  //       const title = "New Document Uploaded";
-  //       const subTitle1 = "We received a new doc from this driver: " + fullName;
-
-  //       const isForgotPassword = false;
-  //       const isAdminRegister = false;
-  //       for (const imageDoc of imageDocs) {
-  //         let currentDoc = await documentModel.findOne({
-  //           where: { document_id: imageDoc.document_id }
-  //         });
-  //         currentDoc = JSON.parse(JSON.stringify(currentDoc));
-  //         const subTitle2 = currentDoc.document_name + " - " + fullName;
-  //         sendMail(
-  //           imageDoc.document_url,
-  //           userDetails.email,
-  //           fullName,
-  //           userId,
-  //           subTitle2,
-  //           imageDoc.document_url,
-  //           isForgotPassword,
-  //           isAdminRegister
-  //         );
-
-  //         // Update the document URL in the docs table
-  //         await documentModel.update({
-  //           document_url: imageDoc.document_url
-  //         }, {
-  //           where: { document_id: imageDoc.document_id }
-  //         });
-  //       }
-
-  //       // Update the document_uploaded flag in the users table
-  //       if (req.body.document_uploaded === "false") {
-  //         await userModel.update({
-  //           document_uploaded: false
-  //         }, {
-  //           where: { user_id: userId }
-  //         });
-  //       } else {
-  //         await userModel.update({
-  //           document_uploaded: true
-  //         }, {
-  //           where: { user_id: userId }
-  //         });
-  //         // setTimeout(() => {
-  //         //   checkAgreementsAndSendWhatsAppMessage(userId)
-  //         // }, 15 * 60 * 1000);
-  //       }
-  //       const data = await userModel.findOne({
-  //         where: { user_id: userId },
-  //         include: [{
-  //           as: 'attachment',
-  //           model: documentModel
-  //         }]
-  //       });
-  //       res.status(StatusEnum.SUCCESS).json({
-  //         status: StatusEnum.SUCCESS,
-  //         message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
-  //         data: JSON.parse(JSON.stringify(data)),
-  //       });
-  //     } else {
-  //       res.status(StatusEnum.USER_NOT_FOUND).json({
-  //         status: StatusEnum.USER_NOT_FOUND,
-  //         message: Messages.User_Not_Found,
-  //       });
-  //       return;
-  //     }
-  //   } catch (error) {
-  //     res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
-  //       status: StatusEnum.INTERNAL_SERVER_ERROR,
-  //       message: error.message,
-  //     });
-  //   }
-  // },
   UploadImage: async (req, res) => {
     try {
       const { userId, docIds, isRegistered = "false", document_uploaded = "false" } = req.body;
@@ -338,18 +231,6 @@ module.exports = {
       const updatePromises = imageDocs.map(async (imageDoc) => {
         const currentDoc = await documentModel.findOne({ where: { document_id: imageDoc.document_id } });
         const subTitle2 = `${currentDoc.document_name} - ${fullName}`;
-
-        // emailPromises.push(sendMail(
-        //   imageDoc.document_url,
-        //   userDetails.email,
-        //   fullName,
-        //   userId,
-        //   subTitle2,
-        //   imageDoc.document_url,
-        //   false,
-        //   false
-        // ));
-
         return documentModel.update(
           { document_url: imageDoc.document_url },
           { where: { document_id: imageDoc.document_id } }
@@ -357,9 +238,7 @@ module.exports = {
       });
 
       await Promise.all(updatePromises);
-      // await Promise.all(emailPromises);
-
-      await userModel.update(
+       await userModel.update(
         { document_uploaded: document_uploaded === "true" },
         { where: { user_id: userId } }
       );
@@ -380,7 +259,7 @@ module.exports = {
         message: isRegistered === "true" ? StatusMessages.REGISTER_SUCCESS : StatusMessages.DOCUMENT_SUCCESS,
         data: data,
       });
-      if(document_uploaded == "true" ){
+      if (document_uploaded == "true") {
         await sendWhatsAppMessageOnActiveIBANStatus(userId)
       }
 
@@ -400,9 +279,6 @@ module.exports = {
         const userData = await userModel.findOne({
           where: { email: userEmail }
         });
-        // const results = await Squery("SELECT * FROM users WHERE email = ?", [
-        //   userEmail,
-        // ]);
 
         if (!userData) {
           res.status(StatusEnum.USER_NOT_FOUND).json({
@@ -437,7 +313,7 @@ module.exports = {
             const subTitle2 = "Reset Your Password";
             const isForgotPassword = true;
             const isAdminRegister = false;
-            sendMail(
+            const response = await sendMail(
               dynamicLink,
               userEmail,
               title,
@@ -447,19 +323,18 @@ module.exports = {
               isForgotPassword,
               isAdminRegister
             )
-              .then((response) =>
-                res.status(StatusEnum.SUCCESS).json({
-                  status: StatusEnum.SUCCESS,
-                  message: response.message,
-                  data: dynamicLink,
-                })
-              )
-              .catch((error) =>
-                res.status(500).json({
-                  success: false,
-                  message: error.message,
-                })
-              );
+            if (response.res == 0) {
+              let report_data = await reportsModel.create({
+                user_id: userData.user_id,
+                subject: 'Password Reset.',
+                date: moment().format('YYYY-MM-DD HH:mm:ss')
+              });
+              res.status(StatusEnum.SUCCESS).json({
+                status: StatusEnum.SUCCESS,
+                message: response.message,
+                data: dynamicLink,
+              })
+            }
           } else {
             res.status(StatusEnum.PATTERN_NOT_MATCH).json({
               status: StatusEnum.PATTERN_NOT_MATCH,
@@ -506,7 +381,7 @@ module.exports = {
           const userEmail = existUser.email;
           const userSPSV = existUser.spsv;
           const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(userId);
-          sendMailForIBAN(
+          const mail = await sendMailForIBAN(
             subject,
             req.body.iban_code,
             userId,
@@ -515,6 +390,13 @@ module.exports = {
             userSPSV,
             dynamicLink
           );
+          if (mail.res == 0) {
+            let report_data = await reportsModel.create({
+              user_id: userId,
+              subject: 'Send IBAN number',
+              date: moment().format('YYYY-MM-DD HH:mm:ss')
+            });
+          }
           await userModel.update({
             is_iban_submitted: true
           }, {
@@ -559,42 +441,6 @@ module.exports = {
             }]
           });
           data = JSON.parse(JSON.stringify(data));
-
-          // if (req.file) {
-          //   const fullName = data.first_name + " " + data.last_name;
-          //   const title = "Profile Image Updated";
-          //   const subTitle1 = "We received a new doc from this driver: " + fullName;
-          //   const subTitle2 = "Profile Image Received - " + fullName;
-          //   const isForgotPassword = false;
-          //   const isAdminRegister = false;
-          //   sendMail(
-          //     data.profile_image,
-          //     data.email,
-          //     fullName,
-          //     data.user_id,
-          //     subTitle2,
-          //     data.profile_image,
-          //     isForgotPassword,
-          //     isAdminRegister
-          //   );
-          // }
-          // const fullName = data.first_name + " " + data.last_name;
-          // const subject = `Driver ${data.user_id} ${fullName} Profile Updated`;
-          // const userSPSV = data.spsv;
-          // const userPhone = data.mobile_no;
-          // const userEmail = data.email;
-          // const userProfileImage = data.profile_image;
-          // const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
-          // await sendMailForProfileUpdate(
-          //   subject,
-          //   data.user_id,
-          //   fullName,
-          //   userEmail,
-          //   userSPSV,
-          //   userPhone,
-          //   userProfileImage,
-          //   dynamicLink
-          // );
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.PROFILE_UPDATE_SUCCESS,
@@ -660,7 +506,7 @@ module.exports = {
           const fullName = data.first_name + " " + data.last_name;
           const subject = `${fullName} has signed up to Lynk`;
           const dynamicLink = "https://driverapp.lynk.ie/driver/view/" + encodeURIComponent(data.user_id);
-          await sendMailForDriversInformation(
+          const mail = await sendMailForDriversInformation(
             subject,
             data.user_id,
             fullName,
@@ -675,6 +521,13 @@ module.exports = {
             data.agreement_version,
             dynamicLink
           );
+          if (mail.res == 0) {
+            let report_data = await reportsModel.create({
+              user_id: userId,
+              subject: "Driver's information.",
+              date: moment().format('YYYY-MM-DD HH:mm:ss')
+            });
+          }
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.AGREEMENT_SUCCESS,
@@ -705,9 +558,6 @@ module.exports = {
             where: { user_id: userId }
           });
           userData = JSON.parse(JSON.stringify(userData));
-          // const results = await Squery("SELECT * FROM users WHERE _id = ?", [
-          //   userId,
-          // ]);
 
           if (!userData) {
             res.status(StatusEnum.NOT_FOUND).json({
@@ -721,7 +571,7 @@ module.exports = {
             const userPhone = userData.mobile_no;
             const userEmail = userData.email;
             const currenttime = getCurrentTime();
-            sendMailForHoliday(
+            const mail = await sendMailForHoliday(
               subject,
               userId,
               fullName,
@@ -734,12 +584,17 @@ module.exports = {
               req.body.reason,
               currenttime
             )
-            //   .then((response) =>
+            if (mail.res == 0) {
+              let report_data = await reportsModel.create({
+                user_id: userId,
+                subject: 'Holiday request.',
+                date: moment().format('YYYY-MM-DD HH:mm:ss')
+              });
+            }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
               message: Messages.Holidays_Request_Submitted,
             })
-            // )
             // .catch((error) =>
             //   res.status(500).json({
             //     success: false,
@@ -749,7 +604,6 @@ module.exports = {
             // return;
           }
         } else {
-          //console.log("email:::--", userEmail)
           res.status(StatusEnum.PATTERN_NOT_MATCH).json({
             status: StatusEnum.PATTERN_NOT_MATCH,
             data: Messages.Invalid_Id,
@@ -785,7 +639,7 @@ module.exports = {
             const subject = `Account Deletion Request from Driver ${userData.user_id} ${fullName}`;
 
             const userSPSV = userData.spsv;
-            sendMailForDELETION(
+            let mail = await sendMailForDELETION(
               subject,
               userData.user_id,
               fullName,
@@ -793,19 +647,18 @@ module.exports = {
               userSPSV,
               dynamicLink
             )
-            //   .then((response) =>
+            if (mail.res == 0) {
+              let report_data = await reportsModel.create({
+                user_id: userData.user_id,
+                subject: 'Account Deletion Request.',
+                date: moment().format('YYYY-MM-DD HH:mm:ss')
+              });
+            }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
               data: dynamicLink,
               message: Messages.Deletion_Request_Submitted,
             })
-            // )
-            // .catch((error) =>
-            //   res.status(500).json({
-            //     success: false,
-            //     message: error.message,
-            //   })
-            // );
           } else {
             res.status(StatusEnum.PATTERN_NOT_MATCH).json({
               status: StatusEnum.PATTERN_NOT_MATCH,
@@ -842,7 +695,6 @@ module.exports = {
         }]
       });
       data = JSON.parse(JSON.stringify(data));
-      // const userData = await Squery('SELECT * FROM users LEFT JOIN docs ON users._id = docs.user_id WHERE users._id = ?', [userId]);
 
       if (data) {
         let registrationComplete = "";
@@ -863,23 +715,6 @@ module.exports = {
             data
           );
         }
-        // Extract the attachment details
-        // const attachments = userData.map((doc) => ({
-        //   _id: doc._id,
-        //   doc_name: doc.doc_name,
-        //   doc_url: doc.doc_url,
-        //   createdAt: doc.createdAt,
-        //   updatedAt: doc.updatedAt,
-        // }));
-        // console.log("attachments", attachments);
-        // // Extract the user details
-        // const user = {
-        //   ...userData[0],
-        //   attachment: attachments,
-        //   registrationComplete: registrationComplete,
-        // };
-        // user._id = userId;
-        // console.log("user", user);
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,
           message: StatusMessages.SUCCESS,
@@ -907,26 +742,12 @@ module.exports = {
           where: { email: userEmail }
         });
         userData = JSON.parse(JSON.stringify(userData));
-        // const results = await Squery("SELECT * FROM users WHERE email = ?", [
-        //   userEmail,
-        // ]);
         if (!userData) {
           res.status(StatusEnum.NOT_FOUND).json({
             status: StatusEnum.NOT_FOUND,
             message: Messages.User_Not_Found,
           });
-        }
-        //  else if(results[0].password != req.body.password){
-        //     res.status(StatusEnum.PATTERN_NOT_MATCH).json({
-        //         status: StatusEnum.PATTERN_NOT_MATCH,
-        //         message: Messages.Password_Not_Natched,
-        //       });
-        //       return;
-        // }
-        else {
-
-          // const userId = results[0]._id;
-
+        } else {
           const userToken = userData.authToken;
           // const dynamicLink = "https://driverapp.lynk.ie/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isChangePassword";
           const dynamicLink = "https://lynk-driver-admin.netlify.app/newformpass?userEmail=" + encodeURIComponent(userEmail) + "&userToken=" + userToken + (userData.type == "user" ? "&type=0" : "&type=1") + "&task=isChangePassword";
@@ -936,7 +757,7 @@ module.exports = {
             const subTitle2 = "Reset Your Password";
             const isForgotPassword = true;
             const isAdminRegister = false;
-            sendMail(
+            const mail = await sendMail(
               dynamicLink,
               userEmail,
               title,
@@ -946,19 +767,18 @@ module.exports = {
               isForgotPassword,
               isAdminRegister
             )
-              .then((response) =>
-                res.status(StatusEnum.SUCCESS).json({
-                  status: StatusEnum.SUCCESS,
-                  data: dynamicLink,
-                  message: Messages.Change_Password_Request,
-                })
-              )
-              .catch((error) =>
-                res.status(500).json({
-                  success: false,
-                  message: error.message,
-                })
-              );
+            if (mail.res == 0) {
+              let report_data = await reportsModel.create({
+                user_id: userData.user_id,
+                subject: 'Change Password Mail.',
+                date: moment().format('YYYY-MM-DD HH:mm:ss')
+              });
+            }
+            res.status(StatusEnum.SUCCESS).json({
+              status: StatusEnum.SUCCESS,
+              data: dynamicLink,
+              message: Messages.Change_Password_Request,
+            })
           } else {
             res.status(StatusEnum.PATTERN_NOT_MATCH).json({
               status: StatusEnum.PATTERN_NOT_MATCH,
@@ -966,7 +786,6 @@ module.exports = {
               data: Messages.Invalid_Id,
             });
           }
-          // }
         }
       } else {
         res.status(StatusEnum.PATTERN_NOT_MATCH).json({
@@ -981,42 +800,7 @@ module.exports = {
         message: error.message
       });
     }
-  },
-  // checkDocumentsAndSendWhatsAppMessage: async (req, res) => {
-  //   try {
-  //     // Find all users who have registered 15 minutes ago and have pending documents
-  //     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-
-  //     const users = await userModel.findAll({
-  //       where: {
-  //         createdAt: { [Op.lte]: fifteenMinutesAgo },
-  //         type: 'user'
-  //       },
-  //       include: [{
-  //         required: false,
-  //         as: 'attachment',
-  //         model: documentModel
-  //       }]
-  //     });
-
-  //     users.forEach(async (user) => {
-  //       const pendingDocuments = user.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
-  //       if (pendingDocuments.length > 0) {
-  //         const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no , user.first_name + " " +user.last_name, pendingDocuments);
-  //         res.status(StatusEnum.SUCCESS).json({
-  //           status: StatusEnum.SUCCESS,
-  //           data: data,
-  //           message: Messages.Change_Password_Request,
-  //         })
-  //       }
-  //     });
-  //   } catch (error) {
-  //     res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
-  //       status: StatusEnum.INTERNAL_SERVER_ERROR,
-  //       message: error.message
-  //     });
-  //   }
-  // }
+  }
 
 
 }
