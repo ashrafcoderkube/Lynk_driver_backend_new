@@ -45,7 +45,7 @@ app.use((req, res, next) => {
 // Runs every Monday at 11:00 AM GMT
 cron.schedule('0 11 * * 1', async () => {
     // cron.schedule('*/1 * * * *', () => {
-    const subject = 'Weekly Report.'
+    const subject = 'Driver App Emails Weekly Report'
     console.log('Task is running every Monday at 11:00 AM GMT');
     await sendWeeklyReportsEmail(subject);
 });
