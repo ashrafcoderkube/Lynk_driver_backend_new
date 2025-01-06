@@ -290,13 +290,6 @@ module.exports = {
               const redirectUrl = "https://driverapp.lynk.ie/login";
               const isAdminRegister = false;
               const mail = await sendMail(new_user.user_id, email, fullName, new_user.user_id, subTitle2, redirectUrl, isForgotPassword, isAdminRegister);
-              if (mail.res == 0) {
-                let report_data = await reportsModel.create({
-                  user_id: new_user.user_id,
-                  subject: 'New Account Registered.',
-                  date: moment().format('YYYY-MM-DD HH:mm:ss')
-                });
-              }
               let data = await userModel.findOne({
                 where: { user_id: new_user.user_id }
               });

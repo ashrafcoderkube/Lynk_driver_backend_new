@@ -205,15 +205,7 @@ function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_A
         rejectUnauthorized: false
       }
     });
-    // return new Promise((resolve, reject) => {
-    //   const transporter = nodemailer.createTransport({
-    //     host: 'localhost',
-    //     port: 25,
-    //     secure: false,
-    //     tls: {
-    //       rejectUnauthorized: false
-    //     }
-    //   });
+
     const icabbiStatus = htmlicabbistatus.replace("{{DRIVER_NAME}}", DRIVER_NAME).replace("{{DRIVER_REF}}", DRIVER_REF).replace("{{DRIVER_APP_PIN}}", DRIVER_APP_PIN);
     const mail_configs = {
       from: FROMEMAIL,
@@ -332,7 +324,7 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
         return reject({ message: 'An error has occurred' });
       }
       console.log(info);
-      return resolve({ res: 0, essage: 'Email send successfully' });
+      return resolve({ res: 0, message: 'Email send successfully' });
     });
   });
 }
@@ -625,13 +617,6 @@ async function checkDocumentsAndSendWhatsAppMessage(user_id) {
           dynamicLink,
           pendingDocuments
         );
-        if (mail.res == 0) {
-          let report_data = await reportsModel.create({
-            user_id: user_id,
-            subject: 'Pending Documents.',
-            date: moment().format('YYYY-MM-DD HH:mm:ss')
-          })
-        }
         return data;
       }
     } else {
@@ -718,7 +703,7 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
           let report_data = await reportsModel.create({
             user_id: user_id,
             subject: 'Driver Payment Subscription.',
-            date: moment().format('YYYY-MM-DD HH:mm:ss')
+          date: moment().format('YYYY-MM-DD HH:mm:ss')
           })
         }
 

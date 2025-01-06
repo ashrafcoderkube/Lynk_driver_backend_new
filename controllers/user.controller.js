@@ -152,6 +152,7 @@ module.exports = {
         driver_news: "https://www.lynk.ie/blog/",
         terms_and_conditions: "https://www.lynk.ie/terms-conditions/",
         privacy_policy: "https://www.lynk.ie/privacy-policy/",
+        support_number: "353858564510"
       };
 
       res.status(StatusEnum.SUCCESS).json({
@@ -324,11 +325,11 @@ module.exports = {
               isAdminRegister
             )
             if (response.res == 0) {
-              let report_data = await reportsModel.create({
-                user_id: userData.user_id,
-                subject: 'Password Reset.',
-                date: moment().format('YYYY-MM-DD HH:mm:ss')
-              });
+              // let report_data = await reportsModel.create({
+              //   user_id: userData.user_id,
+              //   subject: 'Password Reset.',
+              //   date: moment().format('YYYY-MM-DD HH:mm:ss')
+              // });
               res.status(StatusEnum.SUCCESS).json({
                 status: StatusEnum.SUCCESS,
                 message: response.message,
@@ -358,7 +359,7 @@ module.exports = {
       });
     }
   },
-  updateUserProfile: async (req, res) => {
+  updateUserProfile: async (req, res) => {    
     try {
       const { id, iban_code } = req.body;
       if (!id) {
@@ -390,13 +391,6 @@ module.exports = {
             userSPSV,
             dynamicLink
           );
-          if (mail.res == 0) {
-            let report_data = await reportsModel.create({
-              user_id: userId,
-              subject: 'Send IBAN number',
-              date: moment().format('YYYY-MM-DD HH:mm:ss')
-            });
-          }
           await userModel.update({
             is_iban_submitted: true
           }, {
@@ -521,13 +515,6 @@ module.exports = {
             data.agreement_version,
             dynamicLink
           );
-          if (mail.res == 0) {
-            let report_data = await reportsModel.create({
-              user_id: userId,
-              subject: "Driver's information.",
-              date: moment().format('YYYY-MM-DD HH:mm:ss')
-            });
-          }
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.AGREEMENT_SUCCESS,
@@ -584,13 +571,6 @@ module.exports = {
               req.body.reason,
               currenttime
             )
-            if (mail.res == 0) {
-              let report_data = await reportsModel.create({
-                user_id: userId,
-                subject: 'Holiday request.',
-                date: moment().format('YYYY-MM-DD HH:mm:ss')
-              });
-            }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
               message: Messages.Holidays_Request_Submitted,
@@ -647,13 +627,6 @@ module.exports = {
               userSPSV,
               dynamicLink
             )
-            if (mail.res == 0) {
-              let report_data = await reportsModel.create({
-                user_id: userData.user_id,
-                subject: 'Account Deletion Request.',
-                date: moment().format('YYYY-MM-DD HH:mm:ss')
-              });
-            }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
               data: dynamicLink,
@@ -768,11 +741,11 @@ module.exports = {
               isAdminRegister
             )
             if (mail.res == 0) {
-              let report_data = await reportsModel.create({
-                user_id: userData.user_id,
-                subject: 'Change Password Mail.',
-                date: moment().format('YYYY-MM-DD HH:mm:ss')
-              });
+              // let report_data = await reportsModel.create({
+              //   user_id: userData.user_id,
+              //   subject: 'Change Password Mail.',
+              //   date: moment().format('YYYY-MM-DD HH:mm:ss')
+              // });
             }
             res.status(StatusEnum.SUCCESS).json({
               status: StatusEnum.SUCCESS,
