@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const axios = require('axios');
+const moment = require('moment');
+
 const {
   BASEURL,
   StatusEnum,
@@ -1053,10 +1055,14 @@ module.exports = {
         const deleteDocument = await documentModel.destroy({
           where: { user_id: id }
         });
+        const deleteReport = await reportsModel.destroy({
+          where : { user_id : id}
+        }); 
         //hard delete
         const deleteUser = await userModel.destroy({
           where: { user_id: id }
         });
+        
 
         res.status(StatusEnum.SUCCESS).json({
           status: StatusEnum.SUCCESS,

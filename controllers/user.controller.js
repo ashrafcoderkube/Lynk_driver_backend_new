@@ -13,7 +13,9 @@ const {
   checkSignUpCompleteBetweenFriday4ToSunday12SendWhatsAppMessage,
   sendMailForDELETION,
   sendWhatsAppMessageOnActiveIBANStatus,
-  sendMailForDriversInformation
+  sendMailForDriversInformation,
+  sendMailForWhatsappChat,
+  MSGTimers
 } = require("../Utils/Constant");
 const jwt = require("../Utils/jwtToken");
 const { validateEmail } = require("../Utils/Validations");
@@ -22,9 +24,9 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const reportsModel = require('../models/reports.model');
-
-const jwt2 = require('jsonwebtoken');
-const moment = require('moment'); 
+  const jwt2 = require('jsonwebtoken');
+const moment = require('moment');
+const cronDoc = require("../models/cron.model");
 
 module.exports = {
   getAttachments: async (req, res) => {
@@ -239,7 +241,7 @@ module.exports = {
       });
 
       await Promise.all(updatePromises);
-       await userModel.update(
+      await userModel.update(
         { document_uploaded: document_uploaded === "true" },
         { where: { user_id: userId } }
       );
@@ -251,9 +253,19 @@ module.exports = {
       data = JSON.parse(JSON.stringify(data));
       const pendingDocuments = data.attachment.filter(doc => !doc.document_url).map(doc => doc.document_name);
       if (pendingDocuments.length > 0) {
-        setTimeout(async () => {
-          await checkDocumentsAndSendWhatsAppMessage(userId)
-        }, 15 * 60 * 1000);
+
+        let currentTime = new Date(); // Get the current date and time
+        let timePlus15Minutes = new Date(currentTime.getTime() + MSGTimers.CheckDocuments2); // Add 15 minutes
+        await cronDoc.create({
+          task_id: 5,
+          task_name: "Check Documents and Send WhatsApp Message",
+          task_time: timePlus15Minutes,
+          user_id: userId
+        })
+
+        // setTimeout(async () => {
+        //   await checkDocumentsAndSendWhatsAppMessage(userId)
+        // }, 15 * 60 * 1000);
       }
       res.status(StatusEnum.SUCCESS).json({
         status: StatusEnum.SUCCESS,
@@ -359,12 +371,14 @@ module.exports = {
       });
     }
   },
-  updateUserProfile: async (req, res) => {    
+  updateUserProfile: async (req, res) => {
     try {
       const { id, iban_code } = req.body;
+      console.log("In 1");
       if (!id) {
         res.status(StatusEnum.TOKEN_EXP).json({ message: 'Please provide the id.' });
       } else {
+        console.log("In 2");
         let existUser = await userModel.findOne({
           where: { user_id: id }
         });
@@ -376,6 +390,7 @@ module.exports = {
             message: Messages.User_Not_Found,
           });
         } else if (req.body.iban_code) {
+          console.log("In 2");
           const fullName = `${existUser.first_name} ${existUser.last_name}`;
           const subject = `IBAN received from ${fullName}`;
           const userId = existUser.user_id;
@@ -396,9 +411,19 @@ module.exports = {
           }, {
             where: { user_id: id }
           });
-          setTimeout(() => {
-            checkAgreementsAndSendWhatsAppMessage(userId)
-          }, 15 * 60 * 1000);
+
+          let currentTime = new Date(); // Get the current date and time
+          let timePlus15Minutes = new Date(currentTime.getTime() + MSGTimers.CheckAgreements); // Add 15 minutes
+          await cronDoc.create({
+            task_id: 6,
+            task_name: "Check Agreements and Send WhatsApp Message",
+            task_time: timePlus15Minutes,
+            user_id: userId
+          })
+
+          // setTimeout(() => {
+          //   checkAgreementsAndSendWhatsAppMessage(userId)
+          // }, 15 * 60 * 1000);
           let data = await userModel.findOne({
             where: { user_id: id },
             include: [{
@@ -413,7 +438,7 @@ module.exports = {
           });
         } else {
           const { first_name, last_name, country_code, device_type, mobile_no, clicked_to_app, spsv } = req.body;
-
+          console.log("In 3");
           const updateUser = await userModel.update({
             first_name: first_name || existUser.first_name,
             last_name: last_name || existUser.last_name,
@@ -435,6 +460,7 @@ module.exports = {
             }]
           });
           data = JSON.parse(JSON.stringify(data));
+          console.log("In 4");
           res.status(StatusEnum.SUCCESS).json({
             status: StatusEnum.SUCCESS,
             message: StatusMessages.PROFILE_UPDATE_SUCCESS,
@@ -443,6 +469,9 @@ module.exports = {
         }
       }
     } catch (error) {
+      console.log("In 5");
+      console.log("error message",error.message);
+      
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
         status: StatusEnum.INTERNAL_SERVER_ERROR,
         message: error.message
@@ -472,9 +501,18 @@ module.exports = {
             where: { user_id: userId }
           });
 
-          setTimeout(() => {
-            checkiCabbiAndSendWhatsAppMessage(userId)
-          }, 15 * 60 * 1000);
+          let currentTime = new Date(); // Get the current date and time
+          let timePlus15Minutes = new Date(currentTime.getTime() + MSGTimers.CheckiCabbi); // Add 15 minutes
+          await cronDoc.create({
+            task_id: 7,
+            task_name: "Check iCabbi and Send WhatsApp Message",
+            task_time: timePlus15Minutes,
+            user_id: userId
+          })
+
+          // setTimeout(() => {
+          //   checkiCabbiAndSendWhatsAppMessage(userId)
+          // }, 15 * 60 * 1000);
 
           // Check if the current time is between Friday 4PM and Sunday 12 noon
           const now = moment(); // current server time
@@ -766,6 +804,62 @@ module.exports = {
           data: Messages.Invalid_Email,
           message: StatusMessages.PATTERN_NOT_MATCH,
         });
+      }
+    } catch (error) {
+      res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
+        status: StatusEnum.INTERNAL_SERVER_ERROR,
+        message: error.message
+      });
+    }
+  },
+   whatsappChatEmail: async (req, res) => {
+    try {
+      let userId = req.query.id;
+      if (!req.query.id) {
+        res.status(StatusEnum.TOKEN_EXP).json({ message: 'Please provide the id.' });
+      } else {
+        if (userId) {
+          let userData = await userModel.findOne({
+            where: { user_id: userId }
+          });
+          userData = JSON.parse(JSON.stringify(userData));
+
+          if (!userData) {
+            res.status(StatusEnum.NOT_FOUND).json({
+              status: StatusEnum.NOT_FOUND,
+              message: Messages.User_Not_Found,
+            });
+          } else {
+            
+            const fullName = `${userData.first_name} ${userData.last_name}`;
+            const userSPSV = userData.spsv;
+            const subject = `Driver ${userSPSV} wants to chat on WhatsApp`;
+            const userPhone = userData.mobile_no;
+            const mail = await sendMailForWhatsappChat(
+              subject,
+              fullName,
+              userPhone
+            )
+            res.status(StatusEnum.SUCCESS).json({
+              status: StatusEnum.SUCCESS,
+              message: Messages.WHATSAPPNOTIFY,
+            })
+            // .catch((error) =>
+            //   res.status(500).json({
+            //     success: false,
+            //     message: error.message,
+            //   })
+            // );
+            // return;
+          }
+        } else {
+          res.status(StatusEnum.PATTERN_NOT_MATCH).json({
+            status: StatusEnum.PATTERN_NOT_MATCH,
+            data: Messages.Invalid_Id,
+            message: StatusMessages.PATTERN_NOT_MATCH,
+          });
+          return;
+        }
       }
     } catch (error) {
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({

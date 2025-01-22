@@ -9,7 +9,8 @@ const {
   checkDocumentsAndSendWhatsAppMessage,
   InitialReminder,
   SecondReminder,
-  FinalReminder
+  FinalReminder,
+  MSGTimers
 } = require("../Utils/Constant");
 const jwt = require("../Utils/jwtToken");
 const { validateEmail } = require("../Utils/Validations");
@@ -19,6 +20,7 @@ const documentModel = require("../models/document.model");
 const versionControlModel = require('../models/version_control.model');
 const reportsModel = require('../models/reports.model');
 const sequelize = require('sequelize');
+const cronDoc = require("../models/cron.model");
 module.exports = {
 
   login: async (req, res) => {
@@ -189,34 +191,71 @@ module.exports = {
                 }]
               });
               user = JSON.parse(JSON.stringify(user));
-              setTimeout(async () => {
-                await checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
-              }, 15 * 60 * 1000);
 
+              let currentTime = new Date(); // Get the current date and time
+              let timePlus15Minutes = new Date(currentTime.getTime() + MSGTimers.CheckDocuments);
+              // Add 15 minutes
+              await cronDoc.create({
+                task_id: 1,
+                task_name: "Check Documents and Send WhatsApp Message",
+                task_time: timePlus15Minutes,
+                user_id: new_user.user_id
+              })
+
+              // setTimeout(async () => {
+              //   await checkDocumentsAndSendWhatsAppMessage(new_user.user_id)
+              // }, 15 * 60 * 1000);
+
+              currentTime = new Date(); // Get the current date and time
+              let timePlus24Hours = new Date(currentTime.getTime() + MSGTimers.InitialReminder); // Add 24 Hours
+              await cronDoc.create({
+                task_id: 2,
+                task_name: "InitialReminder",
+                task_time: timePlus24Hours,
+                user_id: new_user.user_id
+              })
 
               // First reminder after 24 hours
-              setTimeout(async () => {
-                let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
-                  await InitialReminder(user_data.user_id);
-                }
-              }, 24 * 60 * 60 * 1000); // 24 hours
+              // setTimeout(async () => {
+              //   let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
+              //   if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
+              //     await InitialReminder(user_data.user_id);
+              //   }
+              // }, 24 * 60 * 60 * 1000); // 24 hours
+
+              currentTime = new Date(); // Get the current date and time
+              let timePlus72Hours = new Date(currentTime.getTime() + MSGTimers.SecondReminder); // Add 72 hours after 24-hour reminder
+              await cronDoc.create({
+                task_id: 3,
+                task_name: "SecondReminder",
+                task_time: timePlus72Hours,
+                user_id: new_user.user_id
+              })
 
               // Reminder after 72 hours (3 days after the 24-hour message)
-              setTimeout(async () => {
-                let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
-                  await SecondReminder(user_data.user_id); // 72-hour reminder
-                }
-              }, (24 + 72) * 60 * 60 * 1000); // 72 hours after 24-hour reminder
+              // setTimeout(async () => {
+              //   let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
+              //   if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
+              //     await SecondReminder(user_data.user_id); // 72-hour reminder
+              //   }
+              // }, (24 + 72) * 60 * 60 * 1000); // 72 hours after 24-hour reminder
+
+              currentTime = new Date(); // Get the current date and time
+              let timePlus7Days = new Date(currentTime.getTime() + MSGTimers.FinalReminder); // Add 7 Days after the 24-hour message
+              await cronDoc.create({
+                task_id: 4,
+                task_name: "FinalReminder",
+                task_time: timePlus7Days,
+                user_id: new_user.user_id
+              })
 
               // Reminder 7 days after the 24-hour message
-              setTimeout(async () => {
-                let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
-                if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
-                  await FinalReminder(user_data.user_id); // 7-day reminder
-                }
-              }, (24 * 60 * 60 * 1000) + (7 * 24 * 60 * 60 * 1000)); // 7 days after 24-hour reminder
+              // setTimeout(async () => {
+              //   let user_data = await userModel.findOne({ where: { user_id: new_user.user_id } });
+              //   if (user_data?.document_uploaded == 0 || user_data?.is_iban_submitted == 0 || user_data?.agreement_verified == 0 || user_data?.clicked_to_app == 'No') {
+              //     await FinalReminder(user_data.user_id); // 7-day reminder
+              //   }
+              // }, (24 * 60 * 60 * 1000) + (7 * 24 * 60 * 60 * 1000)); // 7 days after 24-hour reminder
               let data = await userModel.findOne({
                 where: { user_id: new_user.user_id },
                 include: [{

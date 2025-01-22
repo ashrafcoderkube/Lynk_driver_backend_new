@@ -12,6 +12,7 @@ const acchtml = path.join(__dirname, '../Utils/new-acc.html');
 const forgothtml = path.join(__dirname, '../Utils/forget.html');
 const driverhtml = path.join(__dirname, '../Utils/new-driver.html');
 const ibanhtml = path.join(__dirname, '../Utils/iban.html');
+const whatsappchathtml = path.join(__dirname, '../Utils/WhatsappChat.html');
 const deletionhtml = path.join(__dirname, '../Utils/Deletion.html');
 const holidayhtml = path.join(__dirname, '../Utils/Holiday.html');
 const profileUpdatehtml = path.join(__dirname, '../Utils/Profile-updated.html');
@@ -26,6 +27,7 @@ const htmlFileacc = fs.readFileSync(acchtml, "utf8");
 const htmlFileforgot = fs.readFileSync(forgothtml, "utf8");
 const htmlFiledriver = fs.readFileSync(driverhtml, "utf8");
 const htmlIBAN = fs.readFileSync(ibanhtml, "utf8");
+const htmlWhatsappchat = fs.readFileSync(whatsappchathtml, "utf8");
 const htmlHoliday = fs.readFileSync(holidayhtml, "utf8");
 const htmlProfileUpdate = fs.readFileSync(profileUpdatehtml, "utf8");
 const htmlDeletion = fs.readFileSync(deletionhtml, "utf8");
@@ -37,7 +39,28 @@ const htmlDriverInformation = fs.readFileSync(driverInformationhtml, "utf-8");
 const htmlWeeklyReport = fs.readFileSync(weeklyReportshtml, "utf-8");
 
 const admin = require("firebase-admin");
+const cronDoc = require("../models/cron.model");
 
+const createTransporter = () => {
+  if (process.env.IS_GMAIL == 'true') {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.MY_EMAIL,
+        pass: process.env.MY_PASSWORD
+      }
+    });
+  } else {
+    return nodemailer.createTransport({
+      host: 'localhost',
+      port: 25,
+      secure: false,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+};
 
 const StatusEnum = {
   SUCCESS: 200,                   // OK
@@ -109,8 +132,33 @@ const Messages = {
   Agreement_Update_Success: "Agreement Updated Successfully",
   Change_Password_Request: 'We have sent an email to the email provided with instructions on how to reset your password.',
   // Change_Password_Request: 'If your email is registered with Lynk, you will receive an email with instructions on how to reset your password.',
-  Credentials_Not_Matched: "The credentials entered do not match our records. Please check your email and password and try again."
+  Credentials_Not_Matched: "The credentials entered do not match our records. Please check your email and password and try again.",
+  WHATSAPPNOTIFY: "Your request for whatsapp chat has been submitted!"
+
 }
+const MSGTimers = {
+  CheckDocuments: 15 * 60 * 1000,
+  InitialReminder: 24 * 60 * 60 * 1000,
+  SecondReminder: (24 + 72) * 60 * 60 * 1000,
+  FinalReminder: ((24 * 60 * 60 * 1000) + (7 * 24 * 60 * 60 * 1000)),
+  CheckDocuments2: 15 * 60 * 1000,
+  CheckAgreements: 15 * 60 * 1000,
+  CheckiCabbi: 15 * 60 * 1000,
+  Subscription: (72) * 60 * 60 * 1000,
+  DoubletickIBAN: 15 * 60 * 1000
+}
+
+// const MSGTimers = {
+//   CheckDocuments: 2*  60 * 1000,
+//   InitialReminder: 15 * 60 * 1000,
+//   SecondReminder: 20 * 60 * 1000,
+//   FinalReminder:  25 * 60 * 1000,
+//   CheckDocuments2: 2 * 60 * 1000,
+//   CheckAgreements: 3 * 60 * 1000,
+//   CheckiCabbi:2* 60 * 1000,
+//   Subscription: 15 * 60 * 1000,
+//   DoubletickIBAN: 2 * 60 * 1000
+// }
 
 const SOCKET = {
   joinTimeSlot: "joinTimeSlot",
@@ -119,72 +167,34 @@ const SOCKET = {
   leaveGame: "leaveGame"
 }
 
+const createMailConfig = (subject, html, fromEmail = "donotreply@lynk.ie", toEmail = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"], bcc = null) => {
+  const config = {
+    from: process.env.IS_GMAIL == 'true' ? process.env.MY_EMAIL : fromEmail,
+    to: process.env.IS_GMAIL == 'true' ? ['darshika.coderkube@gmail.com', "vijay.coderkube@gmail.com"] : toEmail,
+    subject: subject,
+    html: html
+  };
 
-// function sendMail2(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2,REDIRECT) {
-//     return new Promise((resolve, reject) => {
-//         var transporter = nodemailer.createTransport({
-//             service: 'gmail',
-//             auth: {
-//                 user: process.env.MY_EMAIL,
-//                 pass: process.env.MY_PASSWORD
-//             }
-//         });
+  if (bcc) {
+    config.bcc = bcc;
+  }
 
-//         const mailHtml = htmlFile.replace('{{OTP}}', OTP).replace('{{TITLE}}', TITLE).replace("{{SUBTITLE1}}", SUBTITLE1).replace("{{SUBTITLE2}}", SUBTITLE2).replace("{{REDIRECT}}", REDIRECT);
+  return config;
+};
 
-
-//         const mail_configs = {
-//             from: process.env.MY_EMAIL,
-//             to: EMAIL,
-//             subject: 'Testing email',
-//             html: mailHtml,
-//         };
-//         transporter.sendMail(mail_configs, function (error, info) {
-//             if (error) {
-//                 console.log(error);
-//                 return reject({ message: 'An error has occurred' });
-//             }
-//             return resolve({ message: 'Email send successfully' });
-//         });
-//     });
-// }
-// "darren.okeeffe@lynk.ie"
 function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPASSWORD = false, ISADMINREGISTER = false, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-
-    // return new Promise((resolve, reject) => {
-    //   const transporter = nodemailer.createTransport({
-    //     host: 'localhost',
-    //     port: 25,
-    //     secure: false,
-    //     tls: {
-    //       rejectUnauthorized: false
-    //     }
-    //   });
-    console.log("send mail-------" + ISFORGOTPASSWORD);
+    const transporter = createTransporter();
 
     const ForgotPassword = htmlFileforgot.replace("{{REDIRECT}}", REDIRECT);
     const driverDoc = htmlFiledriver.replace("{{REDIRECT}}", REDIRECT).replace("{{DRIVER_ID}}", SUBTITLE1).replace("{{DRIVER_NAME}}", TITLE).replace("{{REDIRECT2}}", REDIRECT);
     const NewAccount = htmlFileacc.replace('{{OTP}}', OTP).replace("{{REDIRECT}}", REDIRECT);
 
+    const html = ISFORGOTPASSWORD ? ForgotPassword : ISADMINREGISTER ? NewAccount : driverDoc;
+    const to = (ISFORGOTPASSWORD || ISADMINREGISTER) ? EMAIL : RECEIVEREMAIL;
 
-    console.log("from::-", FROMEMAIL)
-    console.log("to::-", ISFORGOTPASSWORD ? EMAIL : RECEIVEREMAIL)
+    const mail_configs = createMailConfig(SUBTITLE2, html, FROMEMAIL, to);
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: (ISFORGOTPASSWORD || ISADMINREGISTER) ? EMAIL : RECEIVEREMAIL,
-      subject: SUBTITLE2,
-      html: ISFORGOTPASSWORD ? ForgotPassword : ISADMINREGISTER ? NewAccount : driverDoc,
-    };
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -195,25 +205,24 @@ function sendMail(OTP, EMAIL, TITLE, SUBTITLE1, SUBTITLE2, REDIRECT, ISFORGOTPAS
     });
   });
 }
+
 function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_APP_PIN, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
 
-    const icabbiStatus = htmlicabbistatus.replace("{{DRIVER_NAME}}", DRIVER_NAME).replace("{{DRIVER_REF}}", DRIVER_REF).replace("{{DRIVER_APP_PIN}}", DRIVER_APP_PIN);
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: EMAIL,
-      subject: TITLE,
-      html: icabbiStatus,
-      bcc: ['darren.okeeffe@lynk.ie', 'reception@lynk.ie']
-    };
+    const icabbiStatus = htmlicabbistatus
+      .replace("{{DRIVER_NAME}}", DRIVER_NAME)
+      .replace("{{DRIVER_REF}}", DRIVER_REF)
+      .replace("{{DRIVER_APP_PIN}}", DRIVER_APP_PIN);
+
+    const mail_configs = createMailConfig(
+      TITLE,
+      icabbiStatus,
+      FROMEMAIL,
+      EMAIL,
+      ['darren.okeeffe@lynk.ie', 'reception@lynk.ie']
+    );
+
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -224,28 +233,17 @@ function sendMailforIccabiStatus(DRIVER_NAME, EMAIL, TITLE, DRIVER_REF, DRIVER_A
     });
   });
 }
+
 function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForIBAN = htmlIBAN.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LYNK).replace("{{IBAN}}", IBAN_NUMBER);
 
 
     console.log("from::-", FROMEMAIL)
     console.log("to::-", RECEIVEREMAIL)
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForIBAN,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForIBAN, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -259,27 +257,14 @@ function sendMailForIBAN(SUBJECT, IBAN_NUMBER, DRIVER_ID, DRIVER_NAME, DRIVER_EM
 
 function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, REDIRECT_LYNK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForDeletion = htmlDeletion.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LYNK);
 
 
     console.log("from::-", FROMEMAIL)
     console.log("to::-", RECEIVEREMAIL)
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      // to: "darren.okeeffe@lynk.ie",
-      subject: SUBJECT,
-      html: MailForDeletion,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForDeletion, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -293,14 +278,7 @@ function sendMailForDELETION(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIV
 
 function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_NO, FROM, TO, REASON, CURRENT_TIME, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["reception@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForHoliday = htmlHoliday.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{DRIVERNO}}", DRIVER_NO).replace("{{FROM}}", FROM).replace("{{TO}}", TO).replace("{{REASON}}", REASON).replace("{{CURRENTTIME}}", CURRENT_TIME);
 
 
@@ -311,13 +289,42 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
     console.log("DRIVER_To::-", TO)
     console.log("REASON::-", REASON)
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      // to: "reception@lynk.ie",
-      subject: SUBJECT,
-      html: MailForHoliday,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForHoliday, FROMEMAIL, RECEIVEREMAIL);
+    transporter.sendMail(mail_configs, function (error, info) {
+      if (error) {
+        console.log(error);
+        return reject({ message: 'An error has occurred' });
+      }
+      console.log(info);
+      return resolve({ res: 0, message: 'Email send successfully' });
+    });
+  });
+}
+
+function sendMailForWhatsappChat(SUBJECT, DRIVER_NAME, DRIVER_PHONE, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
+  return new Promise((resolve, reject) => {
+    // const transporter = nodemailer.createTransport({
+    //   host: 'localhost',
+    //   port: 25,
+    //   secure: false,
+    //   tls: {
+    //     rejectUnauthorized: false
+    //   }
+    // });
+
+    var transporter = createTransporter();
+    const MailForrWhatsappChat = htmlWhatsappchat.replace("{{NAME}}", DRIVER_NAME).replace("{{PHONE}}", DRIVER_PHONE);
+
+    console.log("from::-", FROMEMAIL)
+    console.log("to::-", RECEIVEREMAIL)
+    //
+    // const mail_configs = {
+    //   from: FROMEMAIL,
+    //   to: RECEIVEREMAIL,
+    //   subject: SUBJECT,
+    //   html: MailForrWhatsappChat,
+    // };
+    const mail_configs = createMailConfig(SUBJECT, MailForrWhatsappChat, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -332,14 +339,7 @@ function sendMailForHoliday(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVE
 function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForProfileUpdate = htmlProfileUpdate.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE);
 
     console.log("from::-", FROMEMAIL)
@@ -348,12 +348,7 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
     console.log("Driver Name:-", DRIVER_NAME)
     console.log("REDIRECT_LINK:-", REDIRECT_LINK)
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForProfileUpdate,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForProfileUpdate, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -366,21 +361,9 @@ function sendMailForProfileUpdate(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL,
 }
 function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForProfileRegister = htmlsubcription.replace('{{DriverName}}', DRIVER_NAME);
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForProfileRegister,
-    };
+    const mail_configs =  createMailConfig(SUBJECT, MailForProfileRegister, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -394,14 +377,7 @@ function sendMailForSubcription(SUBJECT, DRIVER_NAME, FROMEMAIL = "donotreply@ly
 function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
 
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForProfileRegister = htmlProfileRegister.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE);
 
     console.log("from::-", FROMEMAIL)
@@ -409,12 +385,7 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
     console.log("Driver Name:-", DRIVER_NAME)
     console.log("REDIRECT_LINK:-", REDIRECT_LINK)
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForProfileRegister,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForProfileRegister, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -427,22 +398,10 @@ function sendMailForProfileRegister(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAI
 }
 function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_SPSV, DRIVER_PHONE, DRIVER_PROFILE_IMAGE, REDIRECT_LINK, PENDING_DOCUMENTS, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForPendingDocuments = htmlDocumentUpload.replace('{{ID}}', DRIVER_ID).replace("{{NAME}}", DRIVER_NAME).replace("{{NAME2}}", DRIVER_NAME).replace("{{EMAIL}}", DRIVER_EMAIL).replace("{{PHONE}}", DRIVER_PHONE).replace("{{SPSV}}", DRIVER_SPSV).replace("{{PROFILE_IMAGE}}", DRIVER_PROFILE_IMAGE).replace("{{REDIRECT}}", REDIRECT_LINK).replace("{{DOCUMENT_NAME}}", PENDING_DOCUMENTS);
 
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForPendingDocuments,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForPendingDocuments, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -455,14 +414,7 @@ function sendMailForPendingDocuments(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMA
 }
 function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_EMAIL, DRIVER_PHONE, DRIVER_SPSV, DRIVER_PROFILE_IMAGE, DOCUMENT_1, DOCUMENT_2, DOCUMENT_3, DRIVER_IBAN, AGREEMENT_VERSION, REDIRECT_LINK, FROMEMAIL = "donotreply@lynk.ie", RECEIVEREMAIL = ["darren.okeeffe@lynk.ie", "sandra.cole@lynk.ie"]) {
   return new Promise((resolve, reject) => {
-    const transporter = nodemailer.createTransport({
-      host: 'localhost',
-      port: 25,
-      secure: false,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    const transporter = createTransporter();
     const MailForDriversInformation = htmlDriverInformation.replace('{{ID}}', DRIVER_ID)
       .replace("{{NAME}}", DRIVER_NAME)
       .replace("{{NAME2}}", DRIVER_NAME)
@@ -476,12 +428,7 @@ function sendMailForDriversInformation(SUBJECT, DRIVER_ID, DRIVER_NAME, DRIVER_E
       .replace("{{IBAN_No}}", DRIVER_IBAN)
       .replace("{{AGREEMENT_VERSION}}", AGREEMENT_VERSION)
       .replace("{{REDIRECT}}", REDIRECT_LINK);
-    const mail_configs = {
-      from: FROMEMAIL,
-      to: RECEIVEREMAIL,
-      subject: SUBJECT,
-      html: MailForDriversInformation,
-    };
+    const mail_configs = createMailConfig(SUBJECT, MailForDriversInformation, FROMEMAIL, RECEIVEREMAIL);
     transporter.sendMail(mail_configs, function (error, info) {
       if (error) {
         console.log(error);
@@ -696,18 +643,28 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
     user = JSON.parse(JSON.stringify(user));
     if (user) {
       await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'icabbi_driver_ref_app_id_update_v5')
-      setTimeout(async () => {
-        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'pricing_models_22october2024_utility');
-        const mail = await sendMailForSubcription("Driver Payment Subcriptions", user.first_name, "donotreply@lynk.ie", user.email)
-        if (mail.res == 0) {
-          let report_data = await reportsModel.create({
-            user_id: user_id,
-            subject: 'Driver Payment Subscription.',
-          date: moment().format('YYYY-MM-DD HH:mm:ss')
-          })
-        }
 
-      }, (72) * 60 * 60 * 1000);//(72) * 60 * 60 *
+      let currentTime = new Date(); // Get the current date and time
+      let timePlus72Hours = new Date(currentTime.getTime() + MSGTimers.Subscription); // Add 15 minutes
+      await cronDoc.create({
+        task_id: 8,
+        task_name: "Send Doubletick Message and Send Mail for Subscription",
+        task_time: timePlus72Hours,
+        user_id: user_id
+      })
+
+      // setTimeout(async () => {
+      //   const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'pricing_models_22october2024_utility');
+      //   const mail = await sendMailForSubcription("Driver Payment Subcriptions", user.first_name, "donotreply@lynk.ie", user.email)
+      //   if (mail.res == 0) {
+      //     let report_data = await reportsModel.create({
+      //       user_id: user_id,
+      //       subject: 'Driver Payment Subscription.',
+      //       date: moment().format('YYYY-MM-DD HH:mm:ss')
+      //     })
+      //   }
+
+      // }, (72) * 60 * 60 * 1000);//(72) * 60 * 60 *
       return data;
     }
   } catch (error) {
@@ -716,17 +673,26 @@ async function sendWhatsAppMessageOnActiveIcabbiStatus(user_id) {
 }
 async function sendWhatsAppMessageOnActiveIBANStatus(user_id) {
   try {
-    setTimeout(async () => {
-      let user = await userModel.findOne({
-        where: {
-          user_id: user_id
-        }
-      });
-      user = JSON.parse(JSON.stringify(user));
-      if (user?.is_iban_submitted == 0) {
-        const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');
-      }
-    }, 15 * 60 * 1000);//(72) * 60 * 60 *
+    let currentTime = new Date(); // Get the current date and time
+    let timePlus15Minutes = new Date(currentTime.getTime() + MSGTimers.DoubletickIBAN); // Add 15 minutes
+    await cronDoc.create({
+      task_id: 9,
+      task_name: "Send Doubletick Message",
+      task_time: timePlus15Minutes,
+      user_id: user_id
+    })
+
+    // setTimeout(async () => {
+    //   let user = await userModel.findOne({
+    //     where: {
+    //       user_id: user_id
+    //     }
+    //   });
+    //   user = JSON.parse(JSON.stringify(user));
+    //   if (user?.is_iban_submitted == 0) {
+    //     const data = await sendDoubletickWhatsAppMessage(user.country_code + user.mobile_no, user.first_name, "", user.user_id, 'ibann_template_missing_driver_v1');
+    //   }
+    // }, 15 * 60 * 1000);//(72) * 60 * 60 *
     return data;
 
   } catch (error) {
@@ -783,22 +749,10 @@ async function sendWeeklyReportsEmail(SUBJECT, FROMEMAIL = "donotreply@lynk.ie",
     });
 
     return new Promise((resolve, reject) => {
-      const transporter = nodemailer.createTransport({
-        host: 'localhost',
-        port: 25,
-        secure: false,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
+      const transporter = createTransporter();
       const MailForWeeklyReports = htmlWeeklyReport.replace('{{reportRows}}', rows)
 
-      const mail_configs = {
-        from: FROMEMAIL,
-        to: RECEIVEREMAIL,
-        subject: SUBJECT,
-        html: MailForWeeklyReports,
-      };
+      const mail_configs = createMailConfig(SUBJECT, MailForWeeklyReports, FROMEMAIL, RECEIVEREMAIL);
       transporter.sendMail(mail_configs, function (error, info) {
         if (error) {
           console.log(error);
@@ -1041,6 +995,7 @@ module.exports = {
   sendMailForDELETION,
   generateDynamicLink,
   sendMailForHoliday,
+  sendMailForWhatsappChat,
   sendMailForProfileUpdate,
   getCurrentTime,
   InitialReminder,
@@ -1056,5 +1011,7 @@ module.exports = {
   sendMailForProfileRegister,
   sendMailForDriversInformation,
   sendWeeklyReportsEmail,
-  sendWhatsAppMessageOnActiveIBANStatus
+  sendWhatsAppMessageOnActiveIBANStatus,
+  sendMailForSubcription,
+  MSGTimers
 }

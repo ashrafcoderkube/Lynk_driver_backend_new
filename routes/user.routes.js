@@ -27,5 +27,6 @@ router.post("/holidayEmail", jwt.verifyToken, userController.holidayEmail);
 router.post("/deleteAccountEmail", jwt.verifyToken, userController.deleteAccountEmail);
 router.get("/getUser", jwt.verifyToken, userController.getUserById);
 router.post("/changePasswordEmail", jwt.verifyToken, userController.changePasswordEmail);
+router.get("/WhatsappChatEmail", userController.whatsappChatEmail);
 
 module.exports = router;
