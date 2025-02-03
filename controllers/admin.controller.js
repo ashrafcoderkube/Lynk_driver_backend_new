@@ -1324,7 +1324,7 @@ module.exports = {
             if (mail.res == 0) {
               let report_data = await reportsModel.create({
                 user_id: existUser.user_id,
-                subject: 'iCabbi status updated.',
+                subject: 'Welcome to Lynk! Here are your login details.',
                 date: moment().format('YYYY-MM-DD HH:mm:ss')
               });
             }
@@ -1403,7 +1403,7 @@ module.exports = {
               if (mail.res == 0) {
                 let report_data = await reportsModel.create({
                   user_id: existUser.user_id,
-                  subject: 'iCabbi status updated.',
+                  subject: 'Welcome to Lynk! Here are your login details.',
                   date: moment().format('YYYY-MM-DD HH:mm:ss')
                 });
               }

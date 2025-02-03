@@ -33,7 +33,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(express.json());
 
-await con.sync({ alter: true }).then(() => {
+con.sync({ alter: true }).then(() => {
     console.log("Models synchronized successfully.");
 }).catch((error) => {
     console.log(error.message);
@@ -168,7 +168,7 @@ cron.schedule('*/1 * * * *', async () => {
                         if (mail.res == 0) {
                             let report_data = await reportsModel.create({
                                 user_id: user_data.user_id,
-                                subject: 'Driver Payment Subscription.',
+                                subject: 'Action Needed: Select Your Payment Option Now.',
                                 date: moment().format('YYYY-MM-DD HH:mm:ss')
                             })
                         }
