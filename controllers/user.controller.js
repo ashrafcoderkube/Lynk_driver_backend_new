@@ -24,7 +24,7 @@ const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
 const documentModel = require("../models/document.model");
 const reportsModel = require('../models/reports.model');
-  const jwt2 = require('jsonwebtoken');
+const jwt2 = require('jsonwebtoken');
 const moment = require('moment');
 const cronDoc = require("../models/cron.model");
 
@@ -234,6 +234,18 @@ module.exports = {
       const updatePromises = imageDocs.map(async (imageDoc) => {
         const currentDoc = await documentModel.findOne({ where: { document_id: imageDoc.document_id } });
         const subTitle2 = `${currentDoc.document_name} - ${fullName}`;
+        if (isRegistered == "false") {
+          emailPromises.push(sendMail(
+            imageDoc.document_url,
+            userDetails.email,
+            fullName,
+            userId,
+            subTitle2,
+            imageDoc.document_url,
+            false,
+            false
+          ));
+        }
         return documentModel.update(
           { document_url: imageDoc.document_url },
           { where: { document_id: imageDoc.document_id } }
@@ -241,6 +253,9 @@ module.exports = {
       });
 
       await Promise.all(updatePromises);
+      if (emailPromises.length) {
+        await Promise.all(emailPromises);
+      }
       await userModel.update(
         { document_uploaded: document_uploaded === "true" },
         { where: { user_id: userId } }
@@ -470,8 +485,8 @@ module.exports = {
       }
     } catch (error) {
       console.log("In 5");
-      console.log("error message",error.message);
-      
+      console.log("error message", error.message);
+
       res.status(StatusEnum.INTERNAL_SERVER_ERROR).json({
         status: StatusEnum.INTERNAL_SERVER_ERROR,
         message: error.message
@@ -812,7 +827,7 @@ module.exports = {
       });
     }
   },
-   whatsappChatEmail: async (req, res) => {
+  whatsappChatEmail: async (req, res) => {
     try {
       let userId = req.query.id;
       if (!req.query.id) {
@@ -830,7 +845,7 @@ module.exports = {
               message: Messages.User_Not_Found,
             });
           } else {
-            
+
             const fullName = `${userData.first_name} ${userData.last_name}`;
             const userSPSV = userData.spsv;
             const subject = `Driver ${userSPSV} wants to chat on WhatsApp`;
